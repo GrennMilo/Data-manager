@@ -1,0 +1,23 @@
+# Python virtual environment
+venv/
+
+# Temporary upload folder
+uploads/
+
+# Reports folder - all content within will be ignored
+static/reports/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE / Editor specific files (examples)
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS specific files
+.DS_Store
+Thumbs.db 
