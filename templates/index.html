@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Processor</title>
+    <!-- Include Plotly.js via CDN -->
+    <script src='https://cdn.plot.ly/plotly-latest.min.js'></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Optional: Wrap title -->
+    <div class="title-container">
+        <h1>Data Processor</h1>
+    </div>
+
+    <!-- Section for Loading Previous Reports -->
+    <div id="load-report-section" class="card">
+        <h2>Load Previous Report</h2>
+        <div class="form-group-inline">
+            <label for="report-select">Select Report:</label>
+            <select id="report-select">
+                <option value="">Loading reports...</option>
+                <!-- Options will be populated by JS -->
+            </select>
+            <button id="load-report-button">Load Selected Report</button>
+        </div>
+         <div id="load-status-message"></div>
+    </div>
+
+    <!-- Section for Uploading New Files -->
+    <div id="upload-section" class="card">
+        <h2>Process New Files</h2>
+        <form id="upload-form" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="lv_file">LV File:</label>
+                <input type="file" id="lv_file" name="lv_file" accept=".txt" required>
+            </div>
+            <div class="form-group">
+                <label for="gc_file">GC File:</label>
+                <input type="file" id="gc_file" name="gc_file" accept=".txt" required>
+            </div>
+            <button type="submit">Process Files</button>
+        </form>
+        <div id="upload-status-message"></div>
+    </div>
+
+    <!-- Common Loading Indicator -->
+    <div id="loading-indicator" style="display: none;">Processing... Please wait.</div>
+
+    <!-- Results Area (Populated after Upload or Load) -->
+    <div id="results" class="card" style="display: none;">
+        <h2>Results <span id="results-timestamp"></span></h2>
+        
+        <div id="overall-report">
+            <h3>Overall Analysis</h3>
+            <div id="overall-plot-div" class="plotly-plot-container"></div>
+            <div id="overall-data-container" class="report-links">
+                <!-- Link to overall CSV data -->
+            </div>
+        </div>
+
+        <div id="stage-selector-scroll-container" style="display: none;">
+            <h3>Stage Selection</h3>
+            <div class="scrollable-stages">
+                <div id="stage-selector-items">
+                    <!-- Stage buttons will be populated here by JS -->
+                </div>
+            </div>
+        </div>
+
+        <div id="stage-processing-section" style="display: none;"> 
+            <div id="stage-action-buttons" style="margin-top: 15px; margin-bottom: 15px;"> 
+                <button id="download-selected-stages-button">Download Selected Stages CSV</button> 
+                <button id="compare-stages-button">Compare Selected Stages</button>
+            </div>
+            <div id="step-reports"> 
+                 <p>Click a stage button in the scroll bar above to load its plot here.</p>
+            </div>
+            <div id="comparison-report" style="margin-top: 30px; display: none;">
+                 <h3>Stage Comparison</h3>
+                 <div id="comparison-plot-div" class="plotly-plot-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Section for Cross-Report Comparison -->
+    <div id="cross-report-comparison-section" class="card" style="margin-top: 20px;">
+        <h2>Cross-Report Comparison</h2>
+        <div class="form-group-inline">
+            <label for="cross-report-folder-select">Select Report Folder:</label>
+            <select id="cross-report-folder-select">
+                <option value="">Loading report folders...</option>
+                <!-- Options will be populated by JS -->
+            </select>
+        </div>
+        <div id="cross-report-json-select-container" style="margin-top: 10px; margin-bottom: 10px;">
+            <label>Available Comparison Plots in Selected Folder:</label>
+            <div id="cross-report-json-options">
+                <!-- Checkboxes for JSON files will be populated here -->
+            </div>
+        </div>
+        <div class="form-group-inline">
+             <button id="add-selected-cross-json-button">Add Selected Plot(s) to Analysis</button>
+        </div>
+        <div id="selected-cross-json-container" style="margin-top: 10px;">
+            <label>Plots Added for Cross-Comparison:</label>
+            <ul id="selected-cross-json-list">
+                <!-- List items of selected JSON files will be populated here -->
+            </ul>
+        </div>
+        <button id="generate-cross-comparison-button" style="margin-top: 15px;">Generate Cross-Comparison Plot</button>
+        <div id="cross-comparison-status-message" style="margin-top: 10px;"></div>
+        <div id="cross-comparison-plot-div" class="plotly-plot-container" style="margin-top: 20px; display: none;"></div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html> 

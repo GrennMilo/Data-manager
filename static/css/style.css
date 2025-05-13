@@ -1,0 +1,291 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --bg-dark-primary: #1a1d24; /* Very dark blue/grey */
+    --bg-dark-secondary: #272c36; /* Slightly lighter for cards */
+    --bg-dark-tertiary: #3a4150; /* For inputs, interactive elements */
+    --text-primary: #e1e3e8;    /* Light grey for primary text */
+    --text-secondary: #adb5bd;  /* Medium grey for secondary text */
+    --accent-blue: #007bff; 
+    --accent-blue-hover: #0056b3;
+    --border-color: #495057;
+    --shadow-color: rgba(0, 0, 0, 0.15);
+    --success-bg: #28a745;
+    --error-bg: #dc3545;
+    --text-on-color-bg: #ffffff;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    background-color: var(--bg-dark-primary);
+    color: var(--text-primary);
+    line-height: 1.6;
+    padding: 20px;
+}
+
+.title-container {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+h1 {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 2.5em;
+}
+
+.card {
+    background-color: var(--bg-dark-secondary);
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px var(--shadow-color);
+    margin-bottom: 30px;
+    border: 1px solid var(--border-color);
+}
+
+.card h2 {
+    color: var(--text-primary);
+    font-weight: 500;
+    font-size: 1.8em;
+    margin-top: 0;
+    margin-bottom: 25px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 15px;
+}
+
+.card h3 {
+    color: var(--text-primary);
+    font-weight: 500;
+    font-size: 1.4em;
+    margin-top: 20px;
+    margin-bottom: 15px;
+    border-bottom: 1px solid transparent; /* No border or a very subtle one */
+    padding-bottom: 10px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group-inline {
+    display: flex;
+    align-items: center;
+    gap: 15px; /* Space between label, select, button */
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+input[type="file"],
+select {
+    display: block;
+    width: 100%;
+    padding: 12px 15px;
+    box-sizing: border-box;
+    background-color: var(--bg-dark-tertiary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 6px;
+    font-size: 1em;
+}
+
+select {
+    appearance: none; /* Remove default arrow for custom styling if desired */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23adb5bd' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 15px center;
+    background-size: 1em;
+}
+
+input[type="file"]::file-selector-button {
+    background-color: var(--accent-blue);
+    color: var(--text-on-color-bg);
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-right: 10px;
+    font-weight: 500;
+    transition: background-color 0.2s ease-in-out;
+}
+
+input[type="file"]::file-selector-button:hover {
+    background-color: var(--accent-blue-hover);
+}
+
+/* General button styling */
+button {
+    background-color: var(--accent-blue);
+    color: var(--text-on-color-bg);
+    padding: 12px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: 500;
+    transition: background-color 0.2s ease-in-out, transform 0.1s ease;
+    margin-right: 8px;
+    margin-bottom: 8px; /* For wrapping */
+}
+
+button:hover {
+     background-color: var(--accent-blue-hover);
+     transform: translateY(-1px);
+}
+
+button:active {
+    transform: translateY(0px);
+}
+
+/* Status Messages */
+#upload-status-message,
+#load-status-message {
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 6px;
+    text-align: center;
+    font-weight: 500;
+}
+
+.status-success {
+    background-color: var(--success-bg);
+    color: var(--text-on-color-bg);
+    border: 1px solid darken(var(--success-bg), 10%);
+}
+
+.status-error {
+    background-color: var(--error-bg);
+    color: var(--text-on-color-bg);
+    border: 1px solid darken(var(--error-bg), 10%);
+}
+
+#loading-indicator {
+    text-align: center;
+    font-weight: 500;
+    margin: 30px 0;
+    color: var(--text-secondary);
+    font-size: 1.2em;
+}
+
+/* Plotly plot containers */
+.plotly-plot-container {
+    min-height: 450px; 
+    margin-bottom: 20px;
+    background-color: var(--bg-dark-secondary); /* Match card background */
+    border-radius: 8px;
+    padding: 15px;
+    position: relative; 
+    overflow: hidden; 
+}
+
+/* Container for single step report (plot + links) */
+.step-report {
+    border: 1px solid var(--border-color);
+    padding: 20px;
+    margin-top: 20px; 
+    margin-bottom: 20px;
+    border-radius: 8px;
+    background-color: var(--bg-dark-tertiary); /* Slightly different for nesting */
+}
+
+.report-links a, /* For Download Overall CSV */
+.step-links a {
+    display: inline-block;
+    margin-right: 15px;
+    text-decoration: none;
+    color: var(--accent-blue);
+    padding: 8px 0;
+    font-weight: 500;
+}
+
+.report-links a:hover,
+.step-links a:hover {
+    text-decoration: underline;
+    color: var(--accent-blue-hover);
+}
+
+/* Stage Selector Scroll Bar */
+#stage-selector-scroll-container {
+    margin-top: 25px;
+    margin-bottom: 20px;
+}
+#stage-selector-scroll-container h3 {
+    margin-bottom: 10px;
+}
+
+.scrollable-stages {
+    overflow-x: auto;
+    white-space: nowrap; 
+    background-color: var(--bg-dark-primary); /* Darker background for contrast */
+    padding: 15px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+#stage-selector-items {
+    display: inline-block; 
+}
+
+/* Individual stage selector buttons */
+.stage-selector-button {
+    display: inline-block; 
+    background-color: var(--bg-dark-tertiary);
+    color: var(--text-secondary);
+    padding: 8px 15px;
+    margin-right: 10px;
+    margin-bottom: 0;
+    border: 1px solid var(--border-color);
+    font-weight: normal;
+}
+
+.stage-selector-button:hover {
+    background-color: var(--accent-blue-hover);
+    color: var(--text-on-color-bg);
+    border-color: var(--accent-blue-hover);
+}
+
+.stage-selector-button.selected {
+    background-color: var(--accent-blue);
+    color: var(--text-on-color-bg);
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 8px rgba(0, 123, 255, 0.5);
+}
+
+/* Customize scrollbar for webkit browsers */
+.scrollable-stages::-webkit-scrollbar {
+    height: 10px;
+}
+
+.scrollable-stages::-webkit-scrollbar-track {
+    background: var(--bg-dark-primary);
+    border-radius: 5px;
+}
+
+.scrollable-stages::-webkit-scrollbar-thumb {
+    background-color: var(--bg-dark-tertiary);
+    border-radius: 5px;
+    border: 2px solid var(--bg-dark-primary);
+}
+
+.scrollable-stages::-webkit-scrollbar-thumb:hover {
+    background-color: var(--border-color);
+}
+
+/* Comparison plot area */
+#comparison-report h3 {
+    margin-top: 30px;
+}
+
+#overall-plot-container img,
+.step-plot-container img {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #ddd;
+    margin-top: 10px;
+} 
