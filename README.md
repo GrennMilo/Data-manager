@@ -56,8 +56,17 @@ This project provides a web interface for processing and visualizing data from L
 
 ## Setup
 
-1.  **Clone the repository (or ensure you have all the files).**
-2.  **Create a Python virtual environment (recommended):**
+1.  **Install Python:**
+    *   Download and install Python (version 3.8 or higher is recommended) from [python.org](https://www.python.org/downloads/).
+    *   **Important:** During installation on Windows, make sure to check the box that says "Add Python to PATH". For macOS and Linux, Python is usually added to the PATH automatically, or you can do it manually if needed.
+
+2.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/GrennMilo/Data-manager.git
+    cd Data-manager
+    ```
+
+3.  **Create a Python virtual environment (recommended):**
     ```bash
     python -m venv venv
     # On Windows
@@ -65,7 +74,7 @@ This project provides a web interface for processing and visualizing data from L
     # On macOS/Linux
     source venv/bin/activate
     ```
-3.  **Install dependencies:**
+4.  **Install dependencies:**
     ```bash
     pip install -r requirements.txt
     ```
