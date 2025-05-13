@@ -19,8 +19,6 @@ This project provides a web interface for processing and visualizing data from L
     *   A new combined plot is generated, overlaying traces from all selected sources (previous comparison plots and current stages).
     *   Trace names in the cross-comparison plot are prefixed with their report source (e.g., "ReportTimestamp - Stage X - Parameter" or "Current (ReportTimestamp) - Stage Y - Parameter").
     *   Cross-comparison plots are saved in a dedicated `static/reports/cross_comparisons/` subfolder.
-*   **Dark Theme UI** with plots styled to match.
-*   **Removed background grids** from all plots for a cleaner look.
 *   Outputs are organized into timestamped folders within `static/reports/`.
 
 ## Project Structure
@@ -78,6 +76,51 @@ This project provides a web interface for processing and visualizing data from L
     ```bash
     pip install -r requirements.txt
     ```
+
+## IDE Setup (Recommended)
+
+### Installing Cursor IDE
+
+[Cursor](https://cursor.sh/) is a recommended IDE for this project as it provides excellent AI-assisted coding features for customizing the project in order to let them fit the User's expectations.
+
+1. **Download Cursor:**
+   * Visit [cursor.sh](https://cursor.sh/) and download the appropriate version for your operating system.
+   * Install Cursor following the installation wizard instructions.
+
+2. **Open the project in Cursor:**
+   * Launch Cursor
+   * Select "Open Folder" and navigate to the cloned `Data-manager` directory
+
+### Configuring Cursor with the Virtual Environment
+
+1. **Automatic Virtual Environment Detection:**
+   * Open any Python file in the project
+   * Look at the bottom right corner of the Cursor window
+   * Click on the Python version indicator
+   * Select the virtual environment you created (typically shows as `./venv` or similar)
+
+2. **Terminal Integration:**
+   * Open a terminal in Cursor by clicking on "Terminal" in the bottom panel or using the keyboard shortcut `` Ctrl+` `` (backtick)
+   * The terminal should automatically activate the virtual environment if correctly configured
+   * If not activated automatically, manually activate using the appropriate command for your OS (as mentioned in the Setup section)
+
+3. **Using Cursor's Edit Features:**
+   * Cursor provides AI-assisted editing features (Cmd+K or Ctrl+K to access the command palette)
+   * Code navigation, syntax highlighting, and intelligent auto-completion are automatically enabled
+   * Use the integrated terminal to run the Flask application as described in the next section
+
+## About Virtual Environments
+
+### Why Use a Virtual Environment?
+
+Virtual environments are isolated Python environments that allow you to:
+
+* **Isolate dependencies**: Each project can have its own dependencies, regardless of what other projects require
+* **Version control**: Ensure consistent package versions across different development environments
+* **Avoid conflicts**: Prevent package version conflicts between different projects
+* **Clean deployment**: Make it easier to recreate the exact environment on different machines
+
+The `venv` module is the standard tool for creating virtual environments in Python. When you activate the virtual environment, Python will use the packages and dependencies installed within that environment rather than those in the global Python installation.
 
 ## Running the Application
 
