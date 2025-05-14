@@ -609,6 +609,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 crossComparisonStatusMessage.textContent = 'Cross-comparison plot generated successfully.';
                 crossComparisonStatusMessage.className = 'status-success';
                 crossComparisonPlotDiv.style.display = 'block';
+                crossComparisonPlotDiv.innerHTML = ''; // Explicitly clear before rendering new plot
                 fetchAndRenderPlotly(data.cross_comparison_plot_path, crossComparisonPlotDiv);
             } else {
                 throw new Error(data.message || 'Failed to generate cross-comparison plot.');

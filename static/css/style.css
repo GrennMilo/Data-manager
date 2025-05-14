@@ -254,12 +254,13 @@ button:active {
     background-color: var(--accent-blue);
     color: var(--text-on-color-bg);
     border-color: var(--accent-blue);
-    box-shadow: 0 0 8px rgba(0, 123, 255, 0.5);
+    font-weight: 500;
 }
 
 /* Customize scrollbar for webkit browsers */
 .scrollable-stages::-webkit-scrollbar {
     height: 10px;
+    margin-bottom: 10px;
 }
 
 .scrollable-stages::-webkit-scrollbar-track {
@@ -284,6 +285,81 @@ button:active {
 
 #overall-plot-container img,
 .step-plot-container img {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #ddd;
+    margin-top: 10px;
+}
+
+/* Styling for Cross-Report Comparison Section */
+#cross-report-json-select-container label,
+#selected-cross-json-container label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+#cross-report-json-options {
+    max-height: 150px; /* Limit height and make scrollable if many files */
+    overflow-y: auto;
+    background-color: var(--bg-dark-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+#cross-report-json-options div {
+    margin-bottom: 8px; /* Space between checkbox items */
+}
+
+#cross-report-json-options input[type="checkbox"] {
+    margin-right: 8px;
+    accent-color: var(--accent-blue);
+}
+
+#selected-cross-json-list {
+    list-style-type: disc; /* Or none if preferred */
+    padding-left: 20px;
+    margin-top: 5px;
+    background-color: var(--bg-dark-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 15px;
+    min-height: 50px; /* Give some initial height */
+}
+
+#selected-cross-json-list li {
+    color: var(--text-primary);
+    margin-bottom: 5px;
+    font-size: 0.95em;
+}
+
+#cross-comparison-status-message {
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 6px;
+    text-align: center;
+    font-weight: 500;
+    /* Dynamic classes .status-success or .status-error will add background/color */
+}
+
+/* Ensure all select elements have consistent styling if not fully covered by generic select */
+#report-select,
+#cross-report-folder-select {
+    min-width: 200px; /* Ensure they have a decent width in flex layouts */
+    flex-grow: 1; /* Allow them to grow if space is available in .form-group-inline */
+}
+
+/* Ensure buttons in form-group-inline don't cause overflow or unwanted shrinking */
+.form-group-inline button {
+    flex-shrink: 0; /* Prevent buttons from shrinking too much */
+}
+
+#overall-plot-container img,
+#step-plot-container img,
+#comparison-plot-container img {
     max-width: 100%;
     height: auto;
     border: 1px solid #ddd;

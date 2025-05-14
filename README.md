@@ -170,3 +170,9 @@ The `venv` module is the standard tool for creating virtual environments in Pyth
 *   **GC File:** Expected to be tab-delimited (`\t`) with the header on the first line. Requires `Date` (format `dd.mm.yyyy HH:MM:SS`) and `NH3` columns, plus others used in processing/plotting.
 
 *Modify `main_web_processor.py` if your file structures or required columns differ.* 
+
+ine 121, in _default
+    raise TypeError(f"Object of type {type(o).__name__} is not JSON serializable")
+TypeError: Object of type int64 is not JSON serializable
+To fix this, we need to explicitly convert the num_stages to a standard Python int before it's returned to Flask.
+I will modify main_web_processor.py to cast num_stages to a standard Python integer.

@@ -20,4 +20,7 @@ __pycache__/
 
 # OS specific files
 .DS_Store
-Thumbs.db 
+Thumbs.db
+
+# Ignore uploaded files
+/uploads/ 

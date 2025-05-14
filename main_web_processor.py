@@ -20,15 +20,15 @@ dark_theme_layout_updates = dict(
         gridcolor='rgba(0,0,0,0)', # --border-color REMOVED GRID
         linecolor='#495057',
         zerolinecolor='#495057',
-        title_font_color="#adb5bd", # --text-secondary
-        tickfont_color="#adb5bd"
+        title=dict(font=dict(color="#adb5bd")), # --text-secondary
+        tickfont=dict(color="#adb5bd")
     ),
     yaxis=dict( # Default y-axis
         gridcolor='rgba(0,0,0,0)', # REMOVED GRID
         linecolor='#495057',
         zerolinecolor='#495057',
-        title_font_color="#adb5bd",
-        tickfont_color="#adb5bd"
+        title=dict(font=dict(color="#adb5bd")),
+        tickfont=dict(color="#adb5bd")
     ),
     # Apply similar styling to other potential y-axes (yaxis2, yaxis3, yaxis4)
     # Note: These need to be applied specifically where multiple axes exist
@@ -36,22 +36,22 @@ dark_theme_layout_updates = dict(
         gridcolor='rgba(0,0,0,0)', # REMOVED GRID
         linecolor='#495057',
         zerolinecolor='#495057',
-        title_font_color="#adb5bd",
-        tickfont_color="#adb5bd"
+        title=dict(font=dict(color="#adb5bd")),
+        tickfont=dict(color="#adb5bd")
     ),
     yaxis3=dict(
         gridcolor='rgba(0,0,0,0)', # REMOVED GRID
         linecolor='#495057',
         zerolinecolor='#495057',
-        title_font_color="#adb5bd",
-        tickfont_color="#adb5bd"
+        title=dict(font=dict(color="#adb5bd")),
+        tickfont=dict(color="#adb5bd")
     ),
     yaxis4=dict(
         gridcolor='rgba(0,0,0,0)', # REMOVED GRID
         linecolor='#495057',
         zerolinecolor='#495057',
-        title_font_color="#adb5bd",
-        tickfont_color="#adb5bd"
+        title=dict(font=dict(color="#adb5bd")),
+        tickfont=dict(color="#adb5bd")
     ),
     legend=dict(
         orientation="h", # Horizontal legend
@@ -223,22 +223,19 @@ def plot_overall_merged_data(merged_df, output_folder_path):
         hovermode='x unified',
         xaxis=dict(domain=[0.1, 0.9]), # Domain adjusted to make space for multiple Y axes
         yaxis=dict(
-            title=f"Temp ({temp_col}) (C)", 
-            titlefont=dict(color='red'), 
+            title=dict(text=f"Temp ({temp_col}) (C)", font=dict(color='red')),
             tickfont=dict(color='red'),
             side='left',
         ),
         yaxis2=dict(
-            title=f"NH3 ({nh3_col}) (%)", 
-            titlefont=dict(color='lime'), 
+            title=dict(text=f"NH3 ({nh3_col}) (%)", font=dict(color='lime')),
             tickfont=dict(color='lime'),
             anchor='x', 
             overlaying='y', 
             side='right'
         ),
         yaxis3=dict(
-            title="Flow / SP (ml/min)", 
-            titlefont=dict(color='orange'), 
+            title=dict(text="Flow / SP (ml/min)", font=dict(color='orange')),
             tickfont=dict(color='orange'),
             anchor='free', 
             overlaying='y', 
@@ -246,8 +243,7 @@ def plot_overall_merged_data(merged_df, output_folder_path):
             position=0.95 # Position slightly inwards from yaxis2
         ),
          yaxis4=dict(
-            title="Pressure (bar)", 
-            titlefont=dict(color='cyan'), 
+            title=dict(text="Pressure (bar)", font=dict(color='cyan')),
             tickfont=dict(color='cyan'),
             anchor='free', 
             overlaying='y', 
@@ -355,22 +351,19 @@ def plot_per_step_data(step_df, step_number, step_output_folder_path):
         hovermode='x unified',
         xaxis=dict(domain=[0.1, 0.9]), # Make space for Y axes
         yaxis=dict(
-            title=f"Temp ({temp_col}) (C)",
-            titlefont=dict(color='red'), 
+            title=dict(text=f"Temp ({temp_col}) (C)", font=dict(color='red')),
             tickfont=dict(color='red'),
             side='left',
         ),
         yaxis2=dict(
-            title=f"Pressure ({pressure_col}) (bar)", 
-            titlefont=dict(color='aqua'), 
+            title=dict(text=f"Pressure ({pressure_col}) (bar)", font=dict(color='aqua')),
             tickfont=dict(color='aqua'),
             anchor='x', 
             overlaying='y', 
             side='right'
         ),
         yaxis3=dict(
-            title="Flow / SP (ml/min)", 
-            titlefont=dict(color='orange'), # Use a representative color
+            title=dict(text="Flow / SP (ml/min)", font=dict(color='orange')), # Use a representative color
             tickfont=dict(color='orange'),
             anchor='free', 
             overlaying='y', 
@@ -378,8 +371,7 @@ def plot_per_step_data(step_df, step_number, step_output_folder_path):
             position=0.95 # Position slightly inwards
         ),
         yaxis4=dict(
-            title=f"NH3 ({nh3_col}) (%)", 
-            titlefont=dict(color='lime'), 
+            title=dict(text=f"NH3 ({nh3_col}) (%)", font=dict(color='lime')),
             tickfont=dict(color='lime'),
             anchor='free', 
             overlaying='y', 
@@ -456,7 +448,7 @@ def generate_reports(lv_file_path, gc_file_path, base_output_folder):
             num_stages = 0
             print("Warning: Stage detection failed or resulted in 0 stages.")
         else:
-            num_stages = df_lv_full['Stage'].max()
+            num_stages = int(df_lv_full['Stage'].max()) # Cast to standard Python int
             print(f"Detected {num_stages} stages in LV data.")
         results['num_stages'] = num_stages
 
@@ -602,8 +594,8 @@ def generate_comparison_plot(stage_data_json_paths, report_folder_abs):
         height=700,
         hovermode='x unified',
         xaxis_title='Relative Time (s or min - check units)',
-        yaxis=dict(title=f'Temperature ({LV_TEMP_COL}) (C)'),
-        yaxis2=dict(title=f'NH3 ({GC_NH3_COL}) (%)', overlaying='y', side='right'),
+        yaxis=dict(title=dict(text=f'Temperature ({LV_TEMP_COL}) (C)')),
+        yaxis2=dict(title=dict(text=f'NH3 ({GC_NH3_COL}) (%)'), overlaying='y', side='right'),
         # TODO: Define yaxis3, yaxis4 etc. if more traces are added with different units/scales
         paper_bgcolor='#2c2c2c',
         plot_bgcolor='#383838',
@@ -667,10 +659,10 @@ def generate_stage_plot_plotly(stage_df, stage_num):
     fig.update_layout(
         title_text=f"Stage {stage_num} Analysis",
         xaxis_title=time_axis_title,
-        yaxis=dict(title='Temperature (°C)', side='left'),
-        yaxis2=dict(title='Pressure (bar)', side='right', overlaying='y'),
-        yaxis3=dict(title='Flows (ml/min)', side='left', overlaying='y', anchor='free', position=0.10,autoshift=True), # Shifted left
-        yaxis4=dict(title='NH3 (%)', side='right', overlaying='y', anchor='free', position=0.90,autoshift=True), # Shifted right
+        yaxis=dict(title=dict(text='Temperature (°C)'), side='left'),
+        yaxis2=dict(title=dict(text='Pressure (bar)'), side='right', overlaying='y'),
+        yaxis3=dict(title=dict(text='Flows (ml/min)'), side='left', overlaying='y', anchor='free', position=0.10,autoshift=True), # Shifted left
+        yaxis4=dict(title=dict(text='NH3 (%)'), side='right', overlaying='y', anchor='free', position=0.90,autoshift=True), # Shifted right
         **dark_theme_layout_updates,
         legend=dict(y=1.1, orientation='h') # Slightly adjust legend for stage plot title space
     )
@@ -811,12 +803,12 @@ def create_cross_comparison_plot(selected_comparison_json_file_paths, current_re
 
     # --- Finalize Layout ---
     fig.update_layout(
-        title_text='Cross-Report Stage Comparison vs. Relative Time',
+        # title_text='Cross-Report Stage Comparison vs. Relative Time', # Removed to avoid clash with legend
         height=750, # Slightly taller for potentially more traces
         hovermode='x unified',
         xaxis_title='Relative Time (s or min - check units from original plots)', # Emphasize to check original units
-        yaxis=dict(title=f'Y1-Axis (e.g., Temperature ({LV_TEMP_COL}) (C))', side='left'),
-        yaxis2=dict(title=f'Y2-Axis (e.g., NH3 ({GC_NH3_COL}) (%))', overlaying='y1', side='right'),
+        yaxis=dict(title=dict(text=f'Y1-Axis (e.g., Temperature ({LV_TEMP_COL}) (C))'), side='left'),
+        yaxis2=dict(title=dict(text=f'Y2-Axis (e.g., NH3 ({GC_NH3_COL}) (%))'), overlaying='y1', side='right'),
         # Add more yaxis definitions (yaxis3, yaxis4) if other parameters are plotted from sources
         # and need their own axes. For now, assuming most things map to y1 or y2.
         paper_bgcolor='#2c2c2c',
