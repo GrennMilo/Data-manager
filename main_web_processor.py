@@ -97,7 +97,7 @@ def process_lv_file(filename):
         # Potentially handle this case further if it's critical, e.g., by returning an error
         # For now, processing will continue, and it might fail later if temp is essential
 
-    df['Date'] = pd.to_datetime(df['DateTime'], format='%d/%m/%y %H:%M:%S', errors='coerce')
+    df['Date'] = pd.to_datetime(df['DateTime'], errors='coerce', dayfirst=True)
     if 'DateTime' in df.columns:
         df = df.drop(columns=['DateTime'])
     df.dropna(subset=['Date'], inplace=True)
@@ -128,7 +128,7 @@ def process_lv_file(filename):
 def process_gc_file(filename):
     df = pd.read_csv(filename, sep='\t', engine='python')
     df.columns = df.columns.str.strip()
-    df['Date'] = pd.to_datetime(df['Date'], format='%d.%m.%Y %H:%M:%S', errors='coerce')
+    df['Date'] = pd.to_datetime(df['Date'], errors='coerce', dayfirst=True)
     df.dropna(subset=['Date'], inplace=True)
     numeric_cols_gc = ['Area', 'H2', 'Area           _2', 'N2', 'Area           _4', GC_NH3_COL]
     for col_name in df.columns.tolist():
@@ -241,7 +241,8 @@ def plot_overall_merged_data(merged_df, output_folder_path):
             tickfont=dict(color='lime'),
             anchor='x', 
             overlaying='y', 
-            side='right'
+            side='right',
+            range=[0, 20] # Set Y-axis range for NH3 from 0 to 20%
         ),
         yaxis3=dict(
             title=dict(text="Flow / SP (ml/min)", font=dict(color='orange')),
