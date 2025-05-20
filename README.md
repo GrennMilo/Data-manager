@@ -6,6 +6,7 @@ This project provides a web interface for processing and visualizing data from L
 
 *   Upload LV and GC data files (`.txt` format).
 *   Processes data, merges based on timestamps, and detects experimental stages based on `RelativeTime` in the LV file.
+*   **Custom Report Name Prefix:** Allows users to specify a text prefix (e.g., an experiment name) for the generated report folder, resulting in folder names like `MyExperiment_YYYYMMDD_HHMMSS`.
 *   Generates an overall analysis plot and CSV file combining data from both sources.
 *   Generates individual plots, CSV, and JSON data files for each detected stage.
 *   Provides download links for all generated plots and data files through the web interface.
@@ -137,6 +138,7 @@ The `venv` module is the standard tool for creating virtual environments in Pyth
 1.  **Open the web interface** in your browser.
 2.  **Process New Files:**
     *   Use the form to upload your LV data file (`.txt`) and your GC data file (`.txt`).
+    *   Optionally, enter a prefix for your report folder in the "Report Name Prefix" field. This helps in organizing reports (e.g., "ExperimentA").
     *   *Note:* Ensure the files follow the expected format (tab-separated, specific header rows as handled by `main_web_processor.py`).
     *   Click "Process Files".
     *   Wait for processing to complete.

@@ -1,0 +1,14 @@
+{% extends "base_layout.html" %}
+{% block title %}Home - Select Process{% endblock %}
+
+{% block content %}
+<div class="card text-center">
+    <h2>Welcome to the Casale R&D Laboratory Data Processor</h2>
+    <p>Please select a data processing module:</p>
+    <div class="process-selection-container">
+        <a href="{{ url_for('nh3_synthesis_processor') }}" class="process-button">NH3 Synthesis Analysis</a>
+        <a href="{{ url_for('meoh_synthesis_processor') }}" class="process-button">MeOH Synthesis Analysis <span class="coming-soon">(Coming Soon)</span></a>
+        <a href="{{ url_for('nh3_cracking_processor') }}" class="process-button">NH3 Cracking Analysis <span class="coming-soon">(Coming Soon)</span></a>
+    </div>
+</div>
+{% endblock %} 

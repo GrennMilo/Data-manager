@@ -11,6 +11,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- Element References ---
+    const themeSwitcherButton = document.getElementById('theme-switcher');
+    
+    // Only try to access these elements if they exist on the current page
     const uploadForm = document.getElementById('upload-form');
     const uploadStatusMessage = document.getElementById('upload-status-message');
     const loadingIndicator = document.getElementById('loading-indicator');
@@ -42,26 +45,151 @@ document.addEventListener('DOMContentLoaded', () => {
     const generateCrossComparisonButton = document.getElementById('generate-cross-comparison-button');
     const crossComparisonStatusMessage = document.getElementById('cross-comparison-status-message');
     const crossComparisonPlotDiv = document.getElementById('cross-comparison-plot-div');
+    const downloadCrossComparisonCSVButton = document.getElementById('download-cross-comparison-csv-button'); // New button
 
     // --- Global Variables for Cross-Report Comparison ---
     let selectedCrossReportJsonPaths = []; // Stores full paths for backend
 
     // --- Initial Setup ---
-    fetchAndPopulateReportList();
-    fetchAndPopulateCrossReportFolderList(); // New function to populate the cross-report folder selector
+    applyInitialTheme(); // Apply theme on load
+
+    // Only initialize these if the elements exist on the current page
+    if (reportSelect) fetchAndPopulateReportList();
+    if (crossReportFolderSelect) fetchAndPopulateCrossReportFolderList();
 
     // --- Event Listeners ---
-    uploadForm.addEventListener('submit', handleUploadSubmit);
-    loadReportButton.addEventListener('click', handleLoadReportClick);
-    downloadSelectedButton.addEventListener('click', handleDownloadSelectedClick);
-    compareStagesButton.addEventListener('click', handleCompareStagesClick); 
-
-    // New Event Listeners for Cross-Report Comparison
-    crossReportFolderSelect.addEventListener('change', handleCrossReportFolderSelectChange);
-    addSelectedCrossJsonButton.addEventListener('click', handleAddSelectedCrossJson);
-    generateCrossComparisonButton.addEventListener('click', handleGenerateCrossComparison);
+    // Always add theme switch listener
+    if (themeSwitcherButton) {
+        themeSwitcherButton.addEventListener('click', handleThemeSwitch);
+    }
+    
+    // Only add these listeners if the elements exist on this page
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', handleUploadSubmit);
+    }
+    
+    if (loadReportButton) {
+        loadReportButton.addEventListener('click', handleLoadReportClick);
+    }
+    
+    if (downloadSelectedButton) {
+        downloadSelectedButton.addEventListener('click', handleDownloadSelectedClick);
+    }
+    
+    if (compareStagesButton) {
+        compareStagesButton.addEventListener('click', handleCompareStagesClick);
+    }
+    
+    if (crossReportFolderSelect) {
+        crossReportFolderSelect.addEventListener('change', handleCrossReportFolderSelectChange);
+    }
+    
+    if (addSelectedCrossJsonButton) {
+        addSelectedCrossJsonButton.addEventListener('click', handleAddSelectedCrossJson);
+    }
+    
+    if (generateCrossComparisonButton) {
+        generateCrossComparisonButton.addEventListener('click', handleGenerateCrossComparison);
+    }
+    
+    if (downloadCrossComparisonCSVButton) {
+        downloadCrossComparisonCSVButton.addEventListener('click', handleDownloadCrossComparisonCSV);
+    }
 
     // --- Function Definitions ---
+
+    // --- Theme Management Functions ---
+    function applyInitialTheme() {
+        const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        if (savedTheme === 'light') {
+            document.body.classList.add('light-theme');
+            if (themeSwitcherButton) themeSwitcherButton.textContent = '☀️';
+        } else {
+            document.body.classList.remove('light-theme');
+            if (themeSwitcherButton) themeSwitcherButton.textContent = '🌙';
+        }
+        // Re-render visible plots with the new theme
+        updateVisiblePlotsTheme();
+    }
+
+    function handleThemeSwitch() {
+        document.body.classList.toggle('light-theme');
+        if (document.body.classList.contains('light-theme')) {
+            localStorage.setItem('theme', 'light');
+            themeSwitcherButton.textContent = '☀️';
+        } else {
+            localStorage.setItem('theme', 'dark');
+            themeSwitcherButton.textContent = '🌙';
+        }
+        // Re-render visible plots with the new theme
+        updateVisiblePlotsTheme();
+    }
+
+    function getCurrentThemeColors() {
+        const isLightTheme = document.body.classList.contains('light-theme');
+        if (isLightTheme) {
+            return {
+                paper_bgcolor: '#f4f6f8',
+                plot_bgcolor: '#ffffff',
+                font_color: '#212529',
+                gridcolor: '#dee2e6',
+                linecolor: '#ced4da',
+                zerolinecolor: '#ced4da',
+                legend_bgcolor: '#ffffff',
+                legend_bordercolor: '#ced4da',
+                legend_font_color: '#212529'
+            };
+        } else {
+            // Dark theme (current defaults from script.js)
+            return {
+                paper_bgcolor: '#2c2c2c',
+                plot_bgcolor: '#383838',
+                font_color: '#e0e0e0',
+                gridcolor: 'rgba(0,0,0,0)', // Was transparent
+                linecolor: '#5a5a5a',
+                zerolinecolor: '#5a5a5a',
+                legend_bgcolor: '#383838',
+                legend_bordercolor: '#4a4a4a',
+                legend_font_color: '#e0e0e0'
+            };
+        }
+    }
+
+    function updateVisiblePlotsTheme() {
+        // Overall plot
+        if (overallPlotDiv && overallPlotDiv._fullData) { // Check if plot exists
+             fetchAndRenderPlotly(currentRunData.overall_plot_path, overallPlotDiv);
+        }
+        // Step plots
+        const stepPlotContainers = document.querySelectorAll('.step-plot-container');
+        stepPlotContainers.forEach(container => {
+            if (container._fullData) { // Check if plot exists in this container
+                const plotPath = container.dataset.plotPath; // Assuming we can get path if needed, or re-fetch from button
+                const stepNum = container.id.split('-').pop();
+                const stepReport = currentRunData.step_reports.find(sr => sr.step_number == stepNum);
+                if(stepReport && stepReport.plot_path){
+                     fetchAndRenderPlotly(stepReport.plot_path, container);
+                }
+            }
+        });
+        // Comparison plot
+        if (comparisonPlotDiv && comparisonPlotDiv._fullData) {
+             // Need to get the path for the comparison plot if it was dynamically generated
+             // This might require storing the path or finding a way to re-trigger its generation info
+             // For now, let's assume it re-fetches from a known path if available
+             const comparisonPlotPath = comparisonPlotDiv.dataset.currentPlotPath; // We'll need to set this attribute when plot is loaded
+             if(comparisonPlotPath) {
+                fetchAndRenderPlotly(comparisonPlotPath, comparisonPlotDiv);
+             }
+        }
+        // Cross-comparison plot
+        if (crossComparisonPlotDiv && crossComparisonPlotDiv._fullData) {
+            const crossComparisonPlotPath = crossComparisonPlotDiv.dataset.currentPlotPath; // We'll need to set this attribute
+            if(crossComparisonPlotPath) {
+                fetchAndRenderPlotly(crossComparisonPlotPath, crossComparisonPlotDiv);
+            }
+        }
+    }
 
     // Function to fetch the list of reports and populate the dropdown
     function fetchAndPopulateReportList() {
@@ -138,6 +266,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleUploadSubmit(event) {
         event.preventDefault(); 
         const formData = new FormData(event.target);
+        const reportPrefixText = document.getElementById('report_prefix_text_input').value.trim();
+
+        // Append the prefix text if it's not empty
+        // The backend expects it as 'report_prefix_text'
+        if (reportPrefixText) {
+            formData.append('report_prefix_text', reportPrefixText);
+        }
         
         // Reset UI elements before processing
         resetResultsUI();
@@ -312,28 +447,48 @@ document.addEventListener('DOMContentLoaded', () => {
                 return response.json();
             })
             .then(plotData => {
-                // Apply dark theme dynamically
+                const themeColors = getCurrentThemeColors();
+
                 if (!plotData.layout) plotData.layout = {};
-                plotData.layout.paper_bgcolor = '#2c2c2c'; 
-                plotData.layout.plot_bgcolor = '#383838';  
-                plotData.layout.font = { color: '#e0e0e0' }; 
+                plotData.layout.paper_bgcolor = themeColors.paper_bgcolor;
+                plotData.layout.plot_bgcolor = themeColors.plot_bgcolor;
+                plotData.layout.font = { color: themeColors.font_color }; 
                 
                 for (const key in plotData.layout) {
                      if (key.startsWith('xaxis') || key.startsWith('yaxis')) {
-                         if(!plotData.layout[key]) plotData.layout[key] = {}; // Ensure axis object exists
-                         plotData.layout[key].gridcolor = 'rgba(0,0,0,0)';
-                         plotData.layout[key].linecolor = '#5a5a5a'; 
-                         plotData.layout[key].zerolinecolor = '#5a5a5a'; 
+                         if(!plotData.layout[key]) plotData.layout[key] = {};
+                         plotData.layout[key].gridcolor = themeColors.gridcolor;
+                         plotData.layout[key].linecolor = themeColors.linecolor; 
+                         plotData.layout[key].zerolinecolor = themeColors.zerolinecolor;
+                         // Preserve title and tick font colors for specific axes if they were intentionally set (e.g. red for Temp)
+                         // This requires checking if the specific axis font color was set in the original plot JSON
+                         // For now, we apply the global theme font color to axis titles and ticks unless it's yaxis5
+                         if (plotData.layout[key].title && plotData.layout[key].title.font) {
+                            // Dont override if specific color was set, unless it is yaxis5 (stage)
+                            if (!plotData.layout[key].title.font.color || key === 'yaxis5') {
+                                plotData.layout[key].title.font.color = themeColors.font_color;
+                            }
+                         } else if (plotData.layout[key].title) {
+                            plotData.layout[key].title.font = { color: themeColors.font_color };
+                         }
+                         if (plotData.layout[key].tickfont) {
+                            if (!plotData.layout[key].tickfont.color || key === 'yaxis5') {
+                                plotData.layout[key].tickfont.color = themeColors.font_color;
+                            }
+                         } else {
+                            plotData.layout[key].tickfont = { color: themeColors.font_color };
+                         }
                      }
                 }
                 if (plotData.layout.legend) {
-                    if(!plotData.layout.legend) plotData.layout.legend = {}; // Ensure legend object exists
-                    plotData.layout.legend.bgcolor = '#383838';
-                    plotData.layout.legend.bordercolor = '#4a4a4a';
-                    plotData.layout.legend.font = { color: '#e0e0e0' };
+                    if(!plotData.layout.legend) plotData.layout.legend = {};
+                    plotData.layout.legend.bgcolor = themeColors.legend_bgcolor;
+                    plotData.layout.legend.bordercolor = themeColors.legend_bordercolor;
+                    plotData.layout.legend.font = { color: themeColors.legend_font_color };
                 }
 
                 Plotly.newPlot(targetDivElement, plotData.data, plotData.layout, {responsive: true});
+                targetDivElement.dataset.currentPlotPath = plotJsonPath; // Store path for re-rendering on theme change
             })
             .catch(error => {
                 console.error(`Error fetching/plotting for ${plotJsonPath}:`, error);
@@ -410,6 +565,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleCompareStagesClick() {
         const selectedButtons = stageSelectorItems.querySelectorAll('.stage-selector-button.selected');
         const selectedStageNumbers = [];
+        const comparisonPrefixInput = document.getElementById('comparison-prefix-input');
+        const comparisonPrefix = comparisonPrefixInput ? comparisonPrefixInput.value.trim() : '';
         
         selectedButtons.forEach(button => {
             selectedStageNumbers.push(parseInt(button.value, 10)); // Get stage numbers
@@ -436,7 +593,8 @@ document.addEventListener('DOMContentLoaded', () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 timestamp: currentRunData.timestamp_prefix, 
-                stages: selectedStageNumbers 
+                stages: selectedStageNumbers,
+                comparison_prefix: comparisonPrefix // Add the prefix to the payload
             })
         })
         .then(response => {
@@ -611,7 +769,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 crossComparisonPlotDiv.style.display = 'block';
                 crossComparisonPlotDiv.innerHTML = ''; // Explicitly clear before rendering new plot
                 fetchAndRenderPlotly(data.cross_comparison_plot_path, crossComparisonPlotDiv);
+                downloadCrossComparisonCSVButton.style.display = 'inline-block'; // Show download button
             } else {
+                downloadCrossComparisonCSVButton.style.display = 'none'; // Hide on error
                 throw new Error(data.message || 'Failed to generate cross-comparison plot.');
             }
         })
@@ -619,6 +779,176 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error during cross-comparison generation:', error);
             crossComparisonStatusMessage.textContent = `Error: ${error.message}`;
             crossComparisonStatusMessage.className = 'status-error';
+            downloadCrossComparisonCSVButton.style.display = 'none'; // Hide on error
+        });
+    }
+
+    // --- New Functions to Parse Trace Names from Cross-Comparison Plot ---
+    function parseCrossComparisonTraceName(traceName) {
+        let source = "Unknown_Source";
+        let stage = "Unknown_Stage";
+        let parameter = traceName; // Default if parsing fails
+
+        const parts = traceName.split(' - ');
+
+        if (parts.length >= 3) {
+            source = parts[0].trim();
+            stage = parts[1].trim();
+            parameter = parts.slice(2).join(' - ').trim(); // The rest is the parameter
+        } else if (parts.length === 2) {
+            // If only two parts, it's ambiguous. Could be (Source, Param) or (Stage, Param).
+            // For now, let's assume the first part might be a combined source/stage or just source.
+            source = parts[0].trim();
+            parameter = parts[1].trim();
+            // stage remains "Unknown_Stage"
+        }
+        // No specific cleanup for "Current (...)" needed here, the full source string is fine.
+        return { source, stage, parameter };
+    }
+
+    // --- New Event Handler for Downloading Cross-Comparison CSV ---
+    function handleDownloadCrossComparisonCSV() {
+        const plotDataToUse = crossComparisonPlotDiv._fullData || crossComparisonPlotDiv.data;
+
+        if (!crossComparisonPlotDiv || !plotDataToUse || !crossComparisonPlotDiv.layout || !crossComparisonPlotDiv.layout.xaxis) {
+            alert('No cross-comparison plot data or x-axis layout available to download.');
+            return;
+        }
+
+        const xrangeRaw = crossComparisonPlotDiv.layout.xaxis.range;
+        console.log('[CSV Export] Plotly x-axis range (raw):', xrangeRaw);
+
+        if (!xrangeRaw || xrangeRaw.length !== 2) {
+            alert('Could not determine the visible data range from plot.xaxis.range. Please ensure the plot is fully rendered.');
+            return;
+        }
+
+        const xMin = Number(xrangeRaw[0]);
+        const xMax = Number(xrangeRaw[1]);
+        console.log('[CSV Export] Parsed xMin, xMax:', xMin, xMax);
+
+        if (isNaN(xMin) || isNaN(xMax)) {
+            alert('Visible x-axis range values are not valid numbers. Cannot filter data.');
+            return;
+        }
+
+        // Intermediate structure: { "Source//Stage": { "RelativeTime": { Temperature: val, NH3: val } } }
+        const processedData = {}; 
+
+        plotDataToUse.forEach((trace, traceIndex) => {
+            // console.log(`[CSV Export] Processing trace ${traceIndex}: ${trace.name}`);
+            const { source, stage, parameter: parameterNameOriginal } = parseCrossComparisonTraceName(trace.name);
+            
+            let standardizedParameter = 'Other';
+            if (parameterNameOriginal.includes('Temp') || parameterNameOriginal.includes('T Heater')) {
+                standardizedParameter = 'Temperature';
+            } else if (parameterNameOriginal.toUpperCase().includes('NH3')) {
+                standardizedParameter = 'NH3';
+            }
+
+            if (standardizedParameter === 'Other') {
+                // console.log(`[CSV Export] Skipping trace ${trace.name} as it's not Temperature or NH3.`);
+                return; // Effectively a 'continue' in forEach
+            }
+
+            if (trace.x && typeof trace.x.length === 'number' &&
+                trace.y && typeof trace.y.length === 'number') {
+                
+                const groupKey = `${source}//${stage}`;
+                if (!processedData[groupKey]) {
+                    processedData[groupKey] = {};
+                }
+
+                for (let i = 0; i < trace.x.length; i++) {
+                    const xValRaw = trace.x[i];
+                    const yValRaw = trace.y[i];
+                    const numXVal = Number(xValRaw);
+
+                    if (!isNaN(numXVal) && numXVal >= xMin && numXVal <= xMax) {
+                        const timeKey = numXVal.toString(); // Use string for time key to avoid float precision issues with object keys
+                        if (!processedData[groupKey][timeKey]) {
+                            processedData[groupKey][timeKey] = {};
+                        }
+                        processedData[groupKey][timeKey][standardizedParameter] = yValRaw;
+                    }
+                }
+            } else {
+                console.warn(`[CSV Export] Skipping trace ${traceIndex} (${trace.name}) due to missing or non-array-like x/y data.`);
+            }
+        });
+
+        const csvDataRows = [];
+        for (const groupKey in processedData) {
+            const [source, stage] = groupKey.split('//');
+            for (const timeKey in processedData[groupKey]) {
+                const relativeTime = parseFloat(timeKey);
+                const timeData = processedData[groupKey][timeKey];
+                csvDataRows.push({
+                    Source: source,
+                    Stage: stage,
+                    RelativeTime: relativeTime,
+                    Temperature: timeData.Temperature !== undefined ? timeData.Temperature : null,
+                    NH3: timeData.NH3 !== undefined ? timeData.NH3 : null
+                });
+            }
+        }
+
+        // Sort the data
+        csvDataRows.sort((a, b) => {
+            if (a.Source < b.Source) return -1;
+            if (a.Source > b.Source) return 1;
+            if (a.Stage < b.Stage) return -1;
+            if (a.Stage > b.Stage) return 1;
+            return a.RelativeTime - b.RelativeTime;
+        });
+        
+        console.log('[CSV Export] Total data rows for CSV (restructured):', csvDataRows.length);
+        if (csvDataRows.length === 0) {
+            alert('No Temperature or NH3 data points found in the current visible range of the plot. If data is visible, please check the browser console for potential issues or try adjusting the plot view.');
+            return;
+        }
+
+        crossComparisonStatusMessage.textContent = 'Preparing CSV data...';
+        crossComparisonStatusMessage.className = '';
+
+        fetch('/download_cross_comparison_csv', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(csvDataRows) // Send the array of row objects
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => { throw new Error(err.message || `Server error: ${response.status}`); })
+                               .catch(() => { throw new Error(`Server error preparing CSV: ${response.status}`); });
+            }
+            const disposition = response.headers.get('Content-Disposition');
+            let filename = `cross_comparison_export_${new Date().toISOString().slice(0,19).replace(/[:T]/g, '-')}.csv`;
+            if (disposition && disposition.includes('attachment')) {
+                const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+                const matches = filenameRegex.exec(disposition);
+                if (matches != null && matches[1]) {
+                    filename = matches[1].replace(/['"]/g, '');
+                }
+            }
+            return response.blob().then(blob => ({ blob, filename }));
+        })
+        .then(({ blob, filename }) => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+            crossComparisonStatusMessage.textContent = 'CSV download initiated.';
+            crossComparisonStatusMessage.className = 'status-success';
+        })
+        .catch(error => {
+            crossComparisonStatusMessage.textContent = 'Error preparing CSV: ' + error.message;
+            crossComparisonStatusMessage.className = 'status-error';
+            console.error('Error during fetch /download_cross_comparison_csv:', error);
         });
     }
 

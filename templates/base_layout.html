@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Data Processor{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src='https://cdn.plot.ly/plotly-3.0.1.min.js'></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <header class="top-navbar">
+        <div class="navbar-brand">
+            <a href="{{ url_for('home') }}">Skid Data Processors</a>
+        </div>
+        
+        <nav class="nav-links" id="nav-links-container">
+            <a href="{{ url_for('nh3_synthesis_processor') }}" {% if request.path == url_for('nh3_synthesis_processor') %}class="active-nav-link"{% endif %}>NH3 Synthesis</a>
+            <a href="{{ url_for('meoh_synthesis_processor') }}" {% if request.path == url_for('meoh_synthesis_processor') %}class="active-nav-link"{% endif %}>MeOH Synthesis</a>
+            <a href="{{ url_for('nh3_cracking_processor') }}" {% if request.path == url_for('nh3_cracking_processor') %}class="active-nav-link"{% endif %}>NH3 Cracking</a>
+        </nav>
+        
+        <div class="navbar-controls">
+            <button class="menu-toggle" id="menu-toggle-button" aria-label="Toggle menu" aria-expanded="false">
+                <div class="hamburger-icon">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </button>
+            <button id="theme-switcher" class="theme-button" aria-label="Toggle theme">🌙</button>
+        </div>
+    </header>
+
+    <main class="container">
+        {% block content %}
+        <!-- Page specific content will go here -->
+        {% endblock %}
+    </main>
+
+    <footer>
+        <p>&copy; {{ current_year }} Casale S.A. R&D. All rights reserved.</p>
+    </footer>
+
+    <!-- Main script, ensure it's loaded after DOM elements -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    
+    <script>
+        // Hamburger menu toggle functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const menuToggleButton = document.getElementById('menu-toggle-button');
+            const navLinksContainer = document.getElementById('nav-links-container');
+            const navLinks = document.querySelectorAll('#nav-links-container a');
+            
+            // Toggle menu when clicking hamburger button
+            if (menuToggleButton && navLinksContainer) {
+                menuToggleButton.addEventListener('click', () => {
+                    const isExpanded = menuToggleButton.getAttribute('aria-expanded') === 'true';
+                    menuToggleButton.setAttribute('aria-expanded', !isExpanded);
+                    navLinksContainer.classList.toggle('active');
+                    menuToggleButton.classList.toggle('active'); // Toggle active class for icon animation
+                });
+                
+                // Close menu when clicking a link (mobile view)
+                navLinks.forEach(link => {
+                    link.addEventListener('click', () => {
+                        if (window.innerWidth <= 768) {
+                            navLinksContainer.classList.remove('active');
+                            menuToggleButton.classList.remove('active');
+                            menuToggleButton.setAttribute('aria-expanded', 'false');
+                        }
+                    });
+                });
+                
+                // Close menu when clicking outside (mobile view)
+                document.addEventListener('click', (e) => {
+                    if (window.innerWidth <= 768 && 
+                        !navLinksContainer.contains(e.target) && 
+                        !menuToggleButton.contains(e.target) &&
+                        navLinksContainer.classList.contains('active')) {
+                        navLinksContainer.classList.remove('active');
+                        menuToggleButton.classList.remove('active');
+                        menuToggleButton.setAttribute('aria-expanded', 'false');
+                    }
+                });
+            }
+            
+            // Highlight active page
+            const currentPath = window.location.pathname;
+            navLinks.forEach(link => {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active-nav-link');
+                }
+            });
+        });
+    </script>
+</body>
+</html> 

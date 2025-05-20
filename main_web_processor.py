@@ -198,6 +198,10 @@ def plot_overall_merged_data(merged_df, output_folder_path):
     pressure_col = f"{LV_PRESSURE_COL}_LV" if f"{LV_PRESSURE_COL}_LV" in merged_df.columns else LV_PRESSURE_COL
     date_col = 'Date' # Assuming 'Date' is the common column after merge
 
+    # Determine Stage column name (likely 'Stage_LV' after merge)
+    raw_stage_col_name = 'Stage' # This is the original name from process_lv_file
+    stage_col = f"{raw_stage_col_name}_LV" if f"{raw_stage_col_name}_LV" in merged_df.columns else raw_stage_col_name
+
     # --- Add Traces, assigning to different Y axes ---
     # Y Axis 1 (Left): Temperature
     if temp_col in merged_df.columns and pd.api.types.is_numeric_dtype(merged_df[temp_col]):
@@ -224,6 +228,11 @@ def plot_overall_merged_data(merged_df, output_folder_path):
     if pressure_col in merged_df.columns and pd.api.types.is_numeric_dtype(merged_df[pressure_col]):
         fig.add_trace(go.Scatter(x=merged_df[date_col], y=merged_df[pressure_col], name=f'LV Pressure ({pressure_col})', 
                                  mode='lines+markers', marker=dict(color='cyan'), yaxis='y4'))
+
+    # Y Axis 5 (Right, new): Stage Number
+    if stage_col in merged_df.columns and pd.api.types.is_numeric_dtype(merged_df[stage_col]):
+        fig.add_trace(go.Scatter(x=merged_df[date_col], y=merged_df[stage_col], name='Stage Number', 
+                                 mode='lines', line=dict(color='saddlebrown', shape='hv'), yaxis='y5'))
 
     # --- Update Layout with Multiple Axes, Dark Theme --- 
     fig.update_layout(
@@ -259,6 +268,18 @@ def plot_overall_merged_data(merged_df, output_folder_path):
             overlaying='y', 
             side='left',
             position=0.05 # Position slightly inwards from yaxis1
+        ),
+        yaxis5=dict( # Y-axis for Stage Number (visually hidden)
+            title_text="", # No title text
+            showticklabels=False, # No tick labels
+            showline=False, # No axis line
+            showgrid=False, # No grid lines for this axis
+            zeroline=False, # No zero line for this axis
+            anchor='free', 
+            overlaying='y', 
+            side='right', 
+            position=1.0, # Still needed for scaling, though invisible
+            # dtick=1 removed as tick labels are hidden
         ),
         paper_bgcolor='#2c2c2c', # Match body background
         plot_bgcolor='#383838',  # Match results background

@@ -6,8 +6,15 @@ import pandas as pd # Needed for combining dataframes
 import io # Needed for sending file data from memory
 import glob # Import glob
 from main_web_processor import generate_reports, generate_comparison_plot, create_cross_comparison_plot # Import new function
+from datetime import datetime
 
 app = Flask(__name__, template_folder='templates', static_folder='static') # Create Flask application instance
+
+# --- Context Processors ---
+@app.context_processor
+def inject_current_year():
+    """Injects the current year into all templates."""
+    return {'current_year': datetime.utcnow().year}
 
 # --- Configuration ---
 # Define the path for uploaded files. Create the directory if it doesn't exist.
@@ -32,9 +39,31 @@ def allowed_file(filename):
 
 # --- Routes ---
 @app.route('/')
-def index():
-    """ Serves the main HTML page. """
+def root_redirect():
+    """Redirects the base URL to the new home page."""
+    from flask import redirect, url_for
+    return redirect(url_for('home'))
+
+@app.route('/home')
+def home():
+    """Serves the new home page for selecting a process."""
+    return render_template('home.html')
+
+@app.route('/nh3-synthesis')
+def nh3_synthesis_processor():
+    """ Serves the main HTML page for NH3 Synthesis data processing. """
     return render_template('index.html')
+
+@app.route('/meoh-synthesis')
+def meoh_synthesis_processor():
+    """ Placeholder for Methanol Synthesis data processing page. """
+    # For now, just indicate it's coming soon. Can create a simple coming_soon.html or similar.
+    return render_template('meoh_synthesis.html') # Will create this simple page
+
+@app.route('/nh3-cracking')
+def nh3_cracking_processor():
+    """ Placeholder for NH3 Cracking data processing page. """
+    return render_template('nh3_cracking.html') # Will create this simple page
 
 @app.route('/process', methods=['POST'])
 def process_files():
@@ -68,9 +97,17 @@ def process_files():
 
         # --- Data Processing ---
         try:
+            # Get the custom report prefix text from the form
+            report_prefix_text = request.form.get('report_prefix_text', '').strip()
+
             # Call the main processing function from the refactored module
-            # Pass the static reports folder as the base output directory
-            results = main_web_processor.generate_reports(lv_filepath, gc_filepath, REPORTS_FOLDER)
+            # Pass the static reports folder as the base output directory and the prefix
+            results = main_web_processor.generate_reports(
+                lv_filepath,
+                gc_filepath,
+                REPORTS_FOLDER,
+                report_prefix_text=report_prefix_text
+            )
             
             # --- Cleanup Uploaded Files (Optional) ---
             # You might want to keep these for debugging or remove them
@@ -84,6 +121,22 @@ def process_files():
             # Adjust paths in results to be relative to static folder root
             # Ensure the paths start with 'static/' for web access
             static_folder_name = os.path.basename(app.static_folder) # Usually 'static'
+
+            # Determine the actual folder name used (prefix + timestamp or just timestamp)
+            # This is a bit more complex now, need to get it from one of the paths if available
+            # or reconstruct it if no paths were generated but processing was considered successful for the folder creation part.
+            actual_report_folder_name = None
+            if results.get('overall_plot_path'):
+                # Path is like: static/reports/PREFIX_TIMESTAMP/overall_plot.json
+                actual_report_folder_name = os.path.basename(os.path.dirname(results['overall_plot_path']))
+            elif results.get('overall_csv_path'):
+                actual_report_folder_name = os.path.basename(os.path.dirname(results['overall_csv_path']))
+            elif results.get('step_reports') and results['step_reports'][0].get('plot_path'):
+                 actual_report_folder_name = os.path.basename(os.path.dirname(os.path.dirname(results['step_reports'][0]['plot_path'])))
+            # Fallback if no files generated but folder might exist (e.g. empty data)
+            # This part relies on the fact that generate_reports would have created the folder already
+            # We need to be careful here; the results structure should ideally always give us the folder name
+            # For now, let's assume one of the above conditions will hit if a folder was made for results.
 
             if results.get('overall_plot_path'):
                 relative_path = os.path.relpath(results['overall_plot_path'], app.static_folder)
@@ -105,9 +158,15 @@ def process_files():
 
             # Add the timestamp prefix to the response
             if results.get('success'):
-                timestamp_prefix = os.path.basename(os.path.dirname(results.get('overall_plot_path', '') or results.get('overall_csv_path', '')))
-                if timestamp_prefix and timestamp_prefix != 'reports': # Ensure we got a valid timestamp folder
-                    results['timestamp_prefix'] = timestamp_prefix
+                # The timestamp_prefix in results should now be the actual folder name (prefix_timestamp or just timestamp)
+                if actual_report_folder_name and actual_report_folder_name != 'reports': 
+                    results['timestamp_prefix'] = actual_report_folder_name
+                elif report_prefix_text: # if processing made the folder but no files, try to construct it
+                    # This is a less ideal fallback, assumes current time if files were not made
+                    current_timestamp_for_fallback = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    results['timestamp_prefix'] = f"{report_prefix_text}_{current_timestamp_for_fallback}"
+                # else: # if no prefix and no files, the original logic for timestamp_prefix might need to be re-evaluated
+                    # For now, if actual_report_folder_name is None, timestamp_prefix might remain None or an old value
 
             return jsonify(results)
 
@@ -300,6 +359,7 @@ def compare_stages():
         data = request.get_json()
         timestamp = data.get('timestamp')
         stage_numbers = data.get('stages')
+        comparison_prefix = data.get('comparison_prefix', '').strip() # Get the prefix
 
         if not timestamp or not stage_numbers or not isinstance(stage_numbers, list) or len(stage_numbers) < 1:
             return jsonify({'success': False, 'message': 'Missing or invalid timestamp or stage numbers.'}), 400
@@ -325,7 +385,7 @@ def compare_stages():
 
         # Call the new function to generate the comparison plot
         # It needs the base output folder to save the plot
-        comparison_plot_path = generate_comparison_plot(stage_data_paths, report_folder_abs)
+        comparison_plot_path = generate_comparison_plot(stage_data_paths, report_folder_abs, comparison_prefix) # Pass the prefix
 
         if comparison_plot_path:
             # Convert the absolute path to a web-accessible path (relative to static)
@@ -345,7 +405,7 @@ def compare_stages():
 # --- New Endpoint to List Comparison Plots in a Report Folder ---
 @app.route('/list_comparison_plots/<timestamp>', methods=['GET'])
 def list_comparison_plots_in_folder(timestamp):
-    """Lists available stages_comparison_plot_*.json files within a specific report's comparison_plots directory."""
+    """Lists available *_stages_comparison_plot_*.json files within a specific report's comparison_plots directory."""
     try:
         report_folder_rel = os.path.join('reports', timestamp, 'comparison_plots')
         report_folder_abs = os.path.join(app.static_folder, report_folder_rel)
@@ -355,7 +415,8 @@ def list_comparison_plots_in_folder(timestamp):
 
         comparison_plot_files = []
         for filename in os.listdir(report_folder_abs):
-            if filename.startswith('stages_comparison_plot_') and filename.endswith('.json'):
+            # Updated condition to correctly identify comparison plots with optional prefixes
+            if '_stages_comparison_plot_' in filename and filename.endswith('.json'):
                 # Store path relative to the specific timestamp's folder for easier reconstruction later
                 # e.g., comparison_plots/stages_comparison_plot_XYZ.json
                 relative_path_in_timestamp_folder = os.path.join('comparison_plots', filename)
@@ -422,6 +483,45 @@ def generate_cross_report_comparison():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Error generating cross-comparison plot: {e}'}), 500
+
+# --- New Endpoint for Downloading Processed Cross-Comparison Data as CSV ---
+@app.route('/download_cross_comparison_csv', methods=['POST'])
+def download_cross_comparison_csv_data():
+    """
+    Receives processed and filtered data from the frontend (visible points in the cross-comparison plot)
+    and sends back a combined CSV file.
+    """
+    try:
+        data_rows = request.get_json() # Expects a list of objects
+
+        if not data_rows or not isinstance(data_rows, list) or len(data_rows) == 0:
+            return jsonify({'success': False, 'message': 'No data provided for CSV export.'}), 400
+        
+        # Convert list of dicts to DataFrame
+        df = pd.DataFrame(data_rows)
+
+        if df.empty:
+            return jsonify({'success': False, 'message': 'No data to export after processing.'}), 404
+
+        # Convert DataFrame to CSV in memory
+        csv_buffer = io.StringIO()
+        # Define a specific order for columns if desired, otherwise it will be alphabetical or insertion order based on dict keys
+        # For example: columns = ['Source', 'Stage', 'Parameter', 'RelativeTime', 'Value']
+        # df.to_csv(csv_buffer, index=False, columns=columns) 
+        df.to_csv(csv_buffer, index=False)
+        csv_buffer.seek(0)
+
+        # Send the CSV data as a file download
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        response = make_response(csv_buffer.getvalue())
+        response.headers['Content-Disposition'] = f'attachment; filename=cross_comparison_visible_data_{timestamp}.csv'
+        response.headers['Content-Type'] = 'text/csv'
+        return response
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error creating cross-comparison CSV: {e}'}), 500
 
 # --- Main Execution ---
 if __name__ == '__main__':

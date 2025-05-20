@@ -1,18 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data Processor</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-    <script src='https://cdn.plot.ly/plotly-3.0.1.min.js'></script>
-</head>
-<body>
-    <!-- Optional: Wrap title -->
-    <div class="title-container">
-        <h1>Data Processor</h1>
-    </div>
+{% extends "base_layout.html" %}
+{% block title %}NH3 Synthesis Data Processor{% endblock %}
 
+{% block content %}
     <!-- Section for Loading Previous Reports -->
     <div id="load-report-section" class="card">
         <h2>Load Previous Report</h2>
@@ -38,6 +27,10 @@
             <div class="form-group">
                 <label for="gc_file">GC File:</label>
                 <input type="file" id="gc_file" name="gc_file" accept=".txt" required>
+            </div>
+            <div class="form-group">
+                <label for="report_prefix_text_input">Report Name Prefix (Optional):</label>
+                <input type="text" id="report_prefix_text_input" name="report_prefix_text" placeholder="e.g., ExperimentA">
             </div>
             <button type="submit">Process Files</button>
         </form>
@@ -71,6 +64,7 @@
         <div id="stage-processing-section" style="display: none;"> 
             <div id="stage-action-buttons" style="margin-top: 15px; margin-bottom: 15px;"> 
                 <button id="download-selected-stages-button">Download Selected Stages CSV</button> 
+                <input type="text" id="comparison-prefix-input" placeholder="Comparison Plot Prefix (Optional)" style="margin-left: 10px; margin-right: 5px;">
                 <button id="compare-stages-button">Compare Selected Stages</button>
             </div>
             <div id="step-reports"> 
@@ -109,10 +103,8 @@
             </ul>
         </div>
         <button id="generate-cross-comparison-button" style="margin-top: 15px;">Generate Cross-Comparison Plot</button>
+        <button id="download-cross-comparison-csv-button" style="margin-top: 10px; display: none;">Download Visible Plot Data (CSV)</button>
         <div id="cross-comparison-status-message" style="margin-top: 10px;"></div>
         <div id="cross-comparison-plot-div" class="plotly-plot-container" style="margin-top: 20px; display: none;"></div>
     </div>
-
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
-</body>
-</html> 
+{% endblock %} 
