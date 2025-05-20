@@ -88,6 +88,15 @@ def process_lv_file(filename):
     df = df.iloc[2:].reset_index(drop=True)
     df.columns = df.columns.str.strip()
 
+    # Standardize Temperature Column Name
+    if LV_TEMP_COL not in df.columns and 'T Heater UP' in df.columns:
+        print(f"Found 'T Heater UP', renaming to '{LV_TEMP_COL}' for consistency.")
+        df.rename(columns={'T Heater UP': LV_TEMP_COL}, inplace=True)
+    elif LV_TEMP_COL not in df.columns:
+        print(f"Warning: Neither '{LV_TEMP_COL}' nor 'T Heater UP' found in LV file columns.")
+        # Potentially handle this case further if it's critical, e.g., by returning an error
+        # For now, processing will continue, and it might fail later if temp is essential
+
     df['Date'] = pd.to_datetime(df['DateTime'], format='%d/%m/%y %H:%M:%S', errors='coerce')
     if 'DateTime' in df.columns:
         df = df.drop(columns=['DateTime'])
@@ -411,14 +420,34 @@ def plot_per_step_data(step_df, step_number, step_output_folder_path):
     return plot_json_filename, csv_filename, json_filename
 
 # --- Main Orchestration Function for Web App ---
-def generate_reports(lv_file_path, gc_file_path, base_output_folder):
+def generate_reports(lv_file_path, gc_file_path, base_output_folder, report_prefix_text=None):
     """
     Processes LV and GC files, generates plots and data files (CSV, JSON)
     into a timestamped subfolder within base_output_folder.
+    Accepts an optional report_prefix_text to prepend to the folder name.
     Returns paths to generated overall files and a list of dicts for step files.
     """
-    timestamp_prefix = datetime.now().strftime("%Y%m%d_%H%M%S")
-    current_run_output_folder = os.path.join(base_output_folder, timestamp_prefix)
+    current_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    if report_prefix_text and report_prefix_text.strip():
+        # Sanitize prefix text to be filesystem-friendly and URL-friendly
+        safe_prefix = report_prefix_text.strip()
+        # Replace space with underscore first
+        safe_prefix = safe_prefix.replace(" ", "_")
+        # Define other characters that are problematic for file/folder names or URLs
+        # and replace them with underscores.
+        # Common problematic characters for URLs and filesystems:
+        problematic_chars = ['/', '\\\\', '#', '?', '&', '%', ':', '*', '"', '<', '>', '|', '(', ')', '[', ']', '{', '}']
+        for char in problematic_chars:
+            safe_prefix = safe_prefix.replace(char, '_')
+        
+        # Remove multiple consecutive underscores that might result from replacements
+        safe_prefix = "_".join(filter(None, safe_prefix.split('_')))
+
+        folder_name = f"{safe_prefix}_{current_timestamp}"
+    else:
+        folder_name = current_timestamp
+    
+    current_run_output_folder = os.path.join(base_output_folder, folder_name)
     os.makedirs(current_run_output_folder, exist_ok=True)
     print(f"Created main output folder for this run: {current_run_output_folder}")
 
@@ -500,7 +529,7 @@ def generate_reports(lv_file_path, gc_file_path, base_output_folder):
     return results
 
 # --- New Function for Generating Comparison Plot ---
-def generate_comparison_plot(stage_data_json_paths, report_folder_abs):
+def generate_comparison_plot(stage_data_json_paths, report_folder_abs, comparison_prefix_text=None):
     """
     Generates a plot comparing selected variables from multiple stages against RelativeTime.
     Args:
@@ -508,6 +537,7 @@ def generate_comparison_plot(stage_data_json_paths, report_folder_abs):
         report_folder_abs (str): Absolute path to the main report folder for this run 
                                 (e.g., 'static/reports/YYYYMMDD_HHMMSS'),
                                 used to save the comparison plot.
+        comparison_prefix_text (str, optional): User-defined prefix for the plot filename.
     Returns:
         str: Absolute path to the generated comparison plot JSON file, or None on error.
     """
@@ -518,7 +548,21 @@ def generate_comparison_plot(stage_data_json_paths, report_folder_abs):
     # Create a subfolder for comparison plots if it doesn't exist
     comparison_output_folder = os.path.join(report_folder_abs, "comparison_plots")
     os.makedirs(comparison_output_folder, exist_ok=True)
-    plot_json_filename = os.path.join(comparison_output_folder, f"stages_comparison_plot_{pd.Timestamp.now().strftime('%Y%m%d%H%M%S')}.json")
+    
+    base_filename_part = f"stages_comparison_plot_{pd.Timestamp.now().strftime('%Y%m%d%H%M%S')}.json"
+    final_filename = base_filename_part
+
+    if comparison_prefix_text and comparison_prefix_text.strip():
+        safe_prefix = comparison_prefix_text.strip()
+        safe_prefix = safe_prefix.replace(" ", "_")
+        problematic_chars = ['/', '\\\\', '#', '?', '&', '%', ':', '*', '"', '<', '>', '|', '(', ')', '[', ']', '{', '}']
+        for char in problematic_chars:
+            safe_prefix = safe_prefix.replace(char, '_')
+        safe_prefix = "_".join(filter(None, safe_prefix.split('_')))
+        if safe_prefix: # Ensure prefix is not empty after sanitization
+            final_filename = f"{safe_prefix}_{base_filename_part}"
+
+    plot_json_filename = os.path.join(comparison_output_folder, final_filename)
 
     fig = go.Figure()
     colors = pio.templates["plotly_dark"].layout.colorway # Get default dark theme colors
