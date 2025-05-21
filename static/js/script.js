@@ -11,9 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- Element References ---
-    const themeSwitcherButton = document.getElementById('theme-switcher');
-    
-    // Only try to access these elements if they exist on the current page
     const uploadForm = document.getElementById('upload-form');
     const uploadStatusMessage = document.getElementById('upload-status-message');
     const loadingIndicator = document.getElementById('loading-indicator');
@@ -47,54 +44,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const crossComparisonPlotDiv = document.getElementById('cross-comparison-plot-div');
     const downloadCrossComparisonCSVButton = document.getElementById('download-cross-comparison-csv-button'); // New button
 
+    // --- Theme Switcher Elements ---
+    const themeSwitcherButton = document.getElementById('theme-switcher');
+
     // --- Global Variables for Cross-Report Comparison ---
     let selectedCrossReportJsonPaths = []; // Stores full paths for backend
 
     // --- Initial Setup ---
     applyInitialTheme(); // Apply theme on load
-
-    // Only initialize these if the elements exist on the current page
-    if (reportSelect) fetchAndPopulateReportList();
-    if (crossReportFolderSelect) fetchAndPopulateCrossReportFolderList();
+    fetchAndPopulateReportList();
+    fetchAndPopulateCrossReportFolderList(); // New function to populate the cross-report folder selector
 
     // --- Event Listeners ---
-    // Always add theme switch listener
-    if (themeSwitcherButton) {
-        themeSwitcherButton.addEventListener('click', handleThemeSwitch);
-    }
-    
-    // Only add these listeners if the elements exist on this page
-    if (uploadForm) {
-        uploadForm.addEventListener('submit', handleUploadSubmit);
-    }
-    
-    if (loadReportButton) {
-        loadReportButton.addEventListener('click', handleLoadReportClick);
-    }
-    
-    if (downloadSelectedButton) {
-        downloadSelectedButton.addEventListener('click', handleDownloadSelectedClick);
-    }
-    
-    if (compareStagesButton) {
-        compareStagesButton.addEventListener('click', handleCompareStagesClick);
-    }
-    
-    if (crossReportFolderSelect) {
-        crossReportFolderSelect.addEventListener('change', handleCrossReportFolderSelectChange);
-    }
-    
-    if (addSelectedCrossJsonButton) {
-        addSelectedCrossJsonButton.addEventListener('click', handleAddSelectedCrossJson);
-    }
-    
-    if (generateCrossComparisonButton) {
-        generateCrossComparisonButton.addEventListener('click', handleGenerateCrossComparison);
-    }
-    
-    if (downloadCrossComparisonCSVButton) {
-        downloadCrossComparisonCSVButton.addEventListener('click', handleDownloadCrossComparisonCSV);
-    }
+    uploadForm.addEventListener('submit', handleUploadSubmit);
+    loadReportButton.addEventListener('click', handleLoadReportClick);
+    downloadSelectedButton.addEventListener('click', handleDownloadSelectedClick);
+    compareStagesButton.addEventListener('click', handleCompareStagesClick); 
+    themeSwitcherButton.addEventListener('click', handleThemeSwitch);
+
+    // New Event Listeners for Cross-Report Comparison
+    crossReportFolderSelect.addEventListener('change', handleCrossReportFolderSelectChange);
+    addSelectedCrossJsonButton.addEventListener('click', handleAddSelectedCrossJson);
+    generateCrossComparisonButton.addEventListener('click', handleGenerateCrossComparison);
+    downloadCrossComparisonCSVButton.addEventListener('click', handleDownloadCrossComparisonCSV); // New event listener
 
     // --- Function Definitions ---
 
@@ -103,13 +75,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
         if (savedTheme === 'light') {
             document.body.classList.add('light-theme');
-            if (themeSwitcherButton) themeSwitcherButton.textContent = '☀️';
+            themeSwitcherButton.textContent = '☀️';
         } else {
             document.body.classList.remove('light-theme');
-            if (themeSwitcherButton) themeSwitcherButton.textContent = '🌙';
+            themeSwitcherButton.textContent = '🌙';
         }
-        // Re-render visible plots with the new theme
-        updateVisiblePlotsTheme();
     }
 
     function handleThemeSwitch() {
@@ -783,7 +753,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- New Functions to Parse Trace Names from Cross-Comparison Plot ---
+    // --- New Function to Parse Trace Names from Cross-Comparison Plot ---
     function parseCrossComparisonTraceName(traceName) {
         let source = "Unknown_Source";
         let stage = "Unknown_Stage";
