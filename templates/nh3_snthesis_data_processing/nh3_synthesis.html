@@ -1,0 +1,369 @@
+{% extends "base_layout.html" %}
+{% block title %}NH3 Synthesis Data Processor{% endblock %}
+
+{% block content %}
+    <!-- Section for Loading Previous Reports -->
+    <div id="load-report-section" class="card">
+        <h2>Load Previous Report</h2>
+        <div class="form-group-inline">
+            <label for="report-select">Select Report:</label>
+            <select id="report-select">
+                <option value="">Loading reports...</option>
+                <!-- Options will be populated by JS -->
+            </select>
+            <button id="load-report-button">Load Selected Report</button>
+        </div>
+         <div id="load-status-message"></div>
+    </div>
+
+    <!-- Section for Report Management -->
+    <div id="report-management-section" class="card">
+        <h2>Report Management</h2>
+        <div class="management-tabs">
+            <button class="tab-button active" data-tab="delete-tab">Delete Reports</button>
+            <button class="tab-button" data-tab="update-data-tab">Update Reports</button>
+        </div>
+        
+        <div id="delete-tab" class="tab-content active">
+            <h3>Delete Reports</h3>
+            <div class="form-group">
+                <label for="delete-report-select">Select Report to Delete:</label>
+                <select id="delete-report-select">
+                    <option value="">Select a report...</option>
+                    <!-- Options will be populated by JS -->
+                </select>
+            </div>
+            <button id="delete-entire-report-button" class="danger-button">Delete Entire Report</button>
+            <div id="delete-status-message" class="status-message"></div>
+        </div>
+        
+        <div id="update-data-tab" class="tab-content">
+            <h3>Update Existing Report</h3>
+            <div class="form-group">
+                <label for="update-report-select">Select Report:</label>
+                <select id="update-report-select">
+                    <option value="">Select a report...</option>
+                    <!-- Options will be populated by JS -->
+                </select>
+            </div>
+            
+            <div id="update-files-container">
+                <div class="form-group">
+                    <label for="update-lv-file">LV File:</label>
+                    <input type="file" id="update-lv-file" name="update_lv_file" accept=".txt">
+                </div>
+                <div class="form-group">
+                    <label for="update-gc-file">GC File:</label>
+                    <input type="file" id="update-gc-file" name="update_gc_file" accept=".txt">
+                </div>
+            </div>
+            
+            <button id="update-data-button">Update Report and Regenerate Plots</button>
+            <div id="update-status-message" class="status-message"></div>
+        </div>
+    </div>
+
+    <!-- Section for Uploading New Files -->
+    <div id="upload-section" class="card">
+        <h2>Process New Files</h2>
+        <form id="upload-form" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="lv_file">LV File:</label>
+                <input type="file" id="lv_file" name="lv_file" accept=".txt" required>
+            </div>
+            <div class="form-group">
+                <label for="gc_file">GC File:</label>
+                <input type="file" id="gc_file" name="gc_file" accept=".txt" required>
+            </div>
+            <div class="form-group">
+                <label for="report_prefix_text_input">Report Name Prefix (Optional):</label>
+                <input type="text" id="report_prefix_text_input" name="report_prefix_text" placeholder="e.g., ExperimentA">
+            </div>
+            <button type="submit">Process Files</button>
+        </form>
+        <div id="upload-status-message"></div>
+    </div>
+
+    <!-- Common Loading Indicator -->
+    <div id="loading-indicator" style="display: none;">Processing... Please wait.</div>
+
+    <!-- Results Area (Populated after Upload or Load) -->
+    <div id="results" class="card" style="display: none;">
+        <h2>Results <span id="results-timestamp"></span></h2>
+        
+        <div id="overall-report">
+            <h3>Overall Analysis</h3>
+            <div id="overall-plot-div" class="plotly-plot-container"></div>
+            <div id="overall-data-container" class="report-links">
+                <!-- Link to overall CSV data -->
+            </div>
+        </div>
+
+        <div id="stage-selector-scroll-container" style="display: none;">
+            <h3>Stage Selection</h3>
+            <div class="scrollable-stages">
+                <div id="stage-selector-items">
+                    <!-- Stage buttons will be populated here by JS -->
+                </div>
+            </div>
+        </div>
+
+        <div id="stage-processing-section" style="display: none;"> 
+            <div id="stage-action-buttons" style="margin-top: 15px; margin-bottom: 15px;"> 
+                <button id="download-selected-stages-button">Download Selected Stages CSV</button> 
+                <input type="text" id="comparison-prefix-input" placeholder="Comparison Plot Prefix (Optional)" style="margin-left: 10px; margin-right: 5px;">
+                <button id="compare-stages-button">Compare Selected Stages</button>
+            </div>
+            <div id="step-reports"> 
+                 <p>Click a stage button in the scroll bar above to load its plot here.</p>
+            </div>
+            <div id="comparison-report" style="margin-top: 30px; display: none;">
+                 <h3>Stage Comparison</h3>
+                 <div id="comparison-plot-div" class="plotly-plot-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Section for Cross-Report Comparison -->
+    <div id="cross-report-comparison-section" class="card" style="margin-top: 20px;">
+        <h2>Cross-Report Comparison</h2>
+        <div class="form-group-inline">
+            <label for="cross-report-folder-select">Select Report Folder:</label>
+            <select id="cross-report-folder-select">
+                <option value="">Loading report folders...</option>
+                <!-- Options will be populated by JS -->
+            </select>
+        </div>
+        <div id="cross-report-json-select-container" style="margin-top: 10px; margin-bottom: 10px;">
+            <label>Available Comparison Plots in Selected Folder:</label>
+            <div id="cross-report-json-options">
+                <!-- Checkboxes for JSON files will be populated here -->
+            </div>
+        </div>
+        <div class="form-group-inline">
+             <button id="add-selected-cross-json-button">Add Selected Plot(s) to Analysis</button>
+        </div>
+        <div id="selected-cross-json-container" style="margin-top: 10px;">
+            <label>Plots Added for Cross-Comparison:</label>
+            <ul id="selected-cross-json-list">
+                <!-- List items of selected JSON files will be populated here -->
+            </ul>
+        </div>
+        <button id="generate-cross-comparison-button" style="margin-top: 15px;">Generate Cross-Comparison Plot</button>
+        <button id="download-cross-comparison-csv-button" style="margin-top: 10px; display: none;">Download Visible Plot Data (CSV)</button>
+        <div id="cross-comparison-status-message" style="margin-top: 10px;"></div>
+        <div id="cross-comparison-plot-div" class="plotly-plot-container" style="margin-top: 20px; display: none;"></div>
+    </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Tab functionality for report management
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const tabId = button.getAttribute('data-tab');
+                
+                // Update button active state
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                
+                // Update tab content visibility
+                tabContents.forEach(content => {
+                    content.classList.remove('active');
+                    if (content.id === tabId) {
+                        content.classList.add('active');
+                    }
+                });
+            });
+        });
+        
+        // Report deletion functionality
+        const deleteReportSelect = document.getElementById('delete-report-select');
+        
+        if (deleteReportSelect) {
+            // Populate delete report select with the same options as the main report select
+            populateDeleteReportSelect();
+        }
+        
+        // Delete entire report button
+        const deleteEntireReportButton = document.getElementById('delete-entire-report-button');
+        if (deleteEntireReportButton) {
+            deleteEntireReportButton.addEventListener('click', handleDeleteEntireReport);
+        }
+        
+        // Report update functionality
+        const updateReportSelect = document.getElementById('update-report-select');
+        
+        if (updateReportSelect) {
+            // Populate update report select with the same options as the main report select
+            populateUpdateReportSelect();
+        }
+        
+        // Update data button
+        const updateDataButton = document.getElementById('update-data-button');
+        if (updateDataButton) {
+            updateDataButton.addEventListener('click', handleUpdateData);
+        }
+        
+        // Helper functions
+        function populateDeleteReportSelect() {
+            // Clone options from the main report select
+            const mainReportSelect = document.getElementById('report-select');
+            if (mainReportSelect && deleteReportSelect) {
+                // Wait for the main select to be populated
+                const checkExist = setInterval(() => {
+                    if (mainReportSelect.options.length > 1) {
+                        clearInterval(checkExist);
+                        deleteReportSelect.innerHTML = '<option value="">Select a report to delete...</option>';
+                        
+                        Array.from(mainReportSelect.options).forEach(option => {
+                            if (option.value) { // Skip the placeholder option
+                                const newOption = document.createElement('option');
+                                newOption.value = option.value;
+                                newOption.textContent = option.textContent;
+                                deleteReportSelect.appendChild(newOption);
+                            }
+                        });
+                    }
+                }, 100);
+            }
+        }
+        
+        function populateUpdateReportSelect() {
+            // Clone options from the main report select
+            const mainReportSelect = document.getElementById('report-select');
+            if (mainReportSelect && updateReportSelect) {
+                // Wait for the main select to be populated
+                const checkExist = setInterval(() => {
+                    if (mainReportSelect.options.length > 1) {
+                        clearInterval(checkExist);
+                        updateReportSelect.innerHTML = '<option value="">Select a report to update...</option>';
+                        
+                        Array.from(mainReportSelect.options).forEach(option => {
+                            if (option.value) { // Skip the placeholder option
+                                const newOption = document.createElement('option');
+                                newOption.value = option.value;
+                                newOption.textContent = option.textContent;
+                                updateReportSelect.appendChild(newOption);
+                            }
+                        });
+                    }
+                }, 100);
+            }
+        }
+        
+        function handleDeleteEntireReport() {
+            const reportToDelete = deleteReportSelect.value;
+            if (!reportToDelete) {
+                alert('Please select a report to delete.');
+                return;
+            }
+            
+            if (confirm(`Are you sure you want to delete the entire report "${reportToDelete}"? This action cannot be undone.`)) {
+                const deleteStatusMessage = document.getElementById('delete-status-message');
+                deleteStatusMessage.textContent = 'Deleting report...';
+                deleteStatusMessage.className = 'status-message';
+                
+                fetch('/delete_report', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ report_timestamp: reportToDelete })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => { throw new Error(err.message || `Server error: ${response.status}`); });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        deleteStatusMessage.textContent = data.message || 'Report deleted successfully.';
+                        deleteStatusMessage.className = 'status-message status-success';
+                        
+                        // Refresh the report selects
+                        refreshReportSelects();
+                    } else {
+                        throw new Error(data.message || 'Failed to delete report.');
+                    }
+                })
+                .catch(error => {
+                    deleteStatusMessage.textContent = `Error: ${error.message}`;
+                    deleteStatusMessage.className = 'status-message status-error';
+                });
+            }
+        }
+        
+        function handleUpdateData() {
+            const reportTimestamp = updateReportSelect.value;
+            
+            if (!reportTimestamp) {
+                alert('Please select a report to update.');
+                return;
+            }
+            
+            const updateStatusMessage = document.getElementById('update-status-message');
+            updateStatusMessage.textContent = 'Preparing data...';
+            updateStatusMessage.className = 'status-message';
+            
+            const formData = new FormData();
+            formData.append('report_timestamp', reportTimestamp);
+            
+            const lvFile = document.getElementById('update-lv-file').files[0];
+            const gcFile = document.getElementById('update-gc-file').files[0];
+            
+            if (!lvFile || !gcFile) {
+                alert('Please provide both LV and GC files to update the report.');
+                updateStatusMessage.textContent = '';
+                return;
+            }
+            
+            formData.append('lv_file', lvFile);
+            formData.append('gc_file', gcFile);
+            
+            updateStatusMessage.textContent = 'Uploading and processing data...';
+            
+            fetch('/update_report', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw new Error(err.message || `Server error: ${response.status}`); });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    updateStatusMessage.textContent = data.message || 'Report updated successfully.';
+                    updateStatusMessage.className = 'status-message status-success';
+                    
+                    // Clear file inputs
+                    document.getElementById('update-lv-file').value = '';
+                    document.getElementById('update-gc-file').value = '';
+                } else {
+                    throw new Error(data.message || 'Failed to update report.');
+                }
+            })
+            .catch(error => {
+                updateStatusMessage.textContent = `Error: ${error.message}`;
+                updateStatusMessage.className = 'status-message status-error';
+            });
+        }
+        
+        function refreshReportSelects() {
+            // First refresh the main list
+            fetchAndPopulateReportList();
+            
+            // Wait a bit for the main list to be populated, then update the other selects
+            setTimeout(() => {
+                populateDeleteReportSelect();
+                populateUpdateReportSelect();
+            }, 500);
+        }
+    });
+</script>
+{% endblock %} 
