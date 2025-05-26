@@ -32,30 +32,50 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadReportButton = document.getElementById('load-report-button');
     const loadStatusMessage = document.getElementById('load-status-message');
 
+    // Report Management Elements
+    const manageReportSelect = document.getElementById('manage-report-select');
+    const renameReportButton = document.getElementById('rename-report-button');
+    const deleteReportButton = document.getElementById('delete-report-button');
+    const renameReportModal = document.getElementById('rename-report-modal');
+    const newReportNameInput = document.getElementById('new-report-name');
+    const confirmRenameButton = document.getElementById('confirm-rename-button');
+    const closeModalSpan = document.querySelector('.close-modal');
+    const manageStatusMessage = document.getElementById('manage-status-message');
+
+    // Report Contents Elements
+    const viewReportContentsButton = document.getElementById('view-report-contents-button');
+    const reportContentsModal = document.getElementById('report-contents-modal');
+    const reportContentsTree = document.getElementById('report-contents-tree');
+    const refreshContentsButton = document.getElementById('refresh-contents-button');
+    const closeContentsButton = document.getElementById('close-contents-button');
+
     // Comparison Elements
     const compareStagesButton = document.getElementById('compare-stages-button');
     const comparisonReportDiv = document.getElementById('comparison-report');
     const comparisonPlotDiv = document.getElementById('comparison-plot-div');
 
-    // --- Cross-Report Comparison Elements ---
-    const crossReportFolderSelect = document.getElementById('cross-report-folder-select');
-    const crossReportJsonOptionsDiv = document.getElementById('cross-report-json-options');
+    // Cross-Report Comparison Elements
+    const allComparisonPlotsContainer = document.getElementById('all-comparison-plots-container');
     const addSelectedCrossJsonButton = document.getElementById('add-selected-cross-json-button');
     const selectedCrossJsonListUl = document.getElementById('selected-cross-json-list');
     const generateCrossComparisonButton = document.getElementById('generate-cross-comparison-button');
     const crossComparisonStatusMessage = document.getElementById('cross-comparison-status-message');
     const crossComparisonPlotDiv = document.getElementById('cross-comparison-plot-div');
-    const downloadCrossComparisonCSVButton = document.getElementById('download-cross-comparison-csv-button'); // New button
+    const downloadCrossComparisonCSVButton = document.getElementById('download-cross-comparison-csv-button');
 
     // --- Global Variables for Cross-Report Comparison ---
     let selectedCrossReportJsonPaths = []; // Stores full paths for backend
+
+    // --- Global variables for report contents ---
+    let currentReportName = null;
 
     // --- Initial Setup ---
     applyInitialTheme(); // Apply theme on load
 
     // Only initialize these if the elements exist on the current page
     if (reportSelect) fetchAndPopulateReportList();
-    if (crossReportFolderSelect) fetchAndPopulateCrossReportFolderList();
+    if (manageReportSelect) fetchAndPopulateManageReportList();
+    if (allComparisonPlotsContainer) fetchAndPopulateAllComparisonPlots();
 
     // --- Event Listeners ---
     // Always add theme switch listener
@@ -80,10 +100,6 @@ document.addEventListener('DOMContentLoaded', () => {
         compareStagesButton.addEventListener('click', handleCompareStagesClick);
     }
     
-    if (crossReportFolderSelect) {
-        crossReportFolderSelect.addEventListener('change', handleCrossReportFolderSelectChange);
-    }
-    
     if (addSelectedCrossJsonButton) {
         addSelectedCrossJsonButton.addEventListener('click', handleAddSelectedCrossJson);
     }
@@ -95,6 +111,58 @@ document.addEventListener('DOMContentLoaded', () => {
     if (downloadCrossComparisonCSVButton) {
         downloadCrossComparisonCSVButton.addEventListener('click', handleDownloadCrossComparisonCSV);
     }
+
+    if (renameReportButton) {
+        renameReportButton.addEventListener('click', handleRenameReportClick);
+    }
+
+    if (deleteReportButton) {
+        deleteReportButton.addEventListener('click', handleDeleteReportClick);
+    }
+
+    if (confirmRenameButton) {
+        confirmRenameButton.addEventListener('click', handleConfirmRenameClick);
+    }
+
+    if (closeModalSpan) {
+        closeModalSpan.addEventListener('click', () => {
+            renameReportModal.style.display = 'none';
+        });
+    }
+
+    if (viewReportContentsButton) {
+        viewReportContentsButton.addEventListener('click', handleViewReportContentsClick);
+    }
+
+    if (refreshContentsButton) {
+        refreshContentsButton.addEventListener('click', () => {
+            if (currentReportName) {
+                loadReportContents(currentReportName);
+            }
+        });
+    }
+
+    if (closeContentsButton) {
+        closeContentsButton.addEventListener('click', () => {
+            reportContentsModal.style.display = 'none';
+        });
+    }
+
+    // Close modals when clicking on X or outside
+    document.querySelectorAll('.close-modal').forEach(span => {
+        span.addEventListener('click', event => {
+            const modal = event.target.closest('.modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        });
+    });
+
+    window.addEventListener('click', event => {
+        if (event.target.classList.contains('modal')) {
+            event.target.style.display = 'none';
+        }
+    });
 
     // --- Function Definitions ---
 
@@ -621,105 +689,112 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- New Functions for Cross-Report Comparison ---
-
-    // Function to populate the cross-report folder selector
-    function fetchAndPopulateCrossReportFolderList() {
-        fetch('/list_reports') // Reuse existing endpoint
+    // Function to fetch and populate all comparison plots from all reports
+    function fetchAndPopulateAllComparisonPlots() {
+        fetch('/list_all_comparison_plots')
             .then(response => {
-                if (!response.ok) throw new Error('Failed to fetch report list for cross-comparison');
-                return response.json();
-            })
-            .then(data => {
-                if (data.success && data.reports && data.reports.length > 0) {
-                    crossReportFolderSelect.innerHTML = '<option value="">Select a report folder...</option>';
-                    data.reports.forEach(timestamp => {
-                        const option = document.createElement('option');
-                        option.value = timestamp;
-                        option.textContent = timestamp;
-                        crossReportFolderSelect.appendChild(option);
-                    });
-                } else {
-                    crossReportFolderSelect.innerHTML = '<option value="">No report folders found</option>';
-                    if (!data.success) throw new Error(data.message || 'Failed to load report folders');
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching report list for cross-comparison:', error);
-                crossReportFolderSelect.innerHTML = '<option value="">Error loading report folders</option>';
-                // Optionally display error in crossComparisonStatusMessage
-            });
-    }
-
-    // Handler for when a report folder is selected in the cross-report section
-    function handleCrossReportFolderSelectChange() {
-        const selectedTimestamp = crossReportFolderSelect.value;
-        crossReportJsonOptionsDiv.innerHTML = ''; // Clear previous options
-        if (!selectedTimestamp) {
-            return;
-        }
-
-        fetch(`/list_comparison_plots/${selectedTimestamp}`)
-            .then(response => {
-                if (!response.ok) throw new Error('Failed to fetch comparison plots for the selected folder.');
+                if (!response.ok) throw new Error('Failed to fetch comparison plots');
                 return response.json();
             })
             .then(data => {
                 if (data.success && data.comparison_plots && data.comparison_plots.length > 0) {
-                    data.comparison_plots.forEach(plotFile => {
-                        // plotFile is expected to be like "comparison_plots/stages_comparison_plot_XXXX.json"
-                        // We need the full path relative to static/reports/<timestamp>/ for display and selection
-                        const fullPlotPath = `static/reports/${selectedTimestamp}/${plotFile.path}`; 
-                        const checkboxId = `cross-plot-${selectedTimestamp}-${plotFile.name.replace(/\.|\s/g, '-')}`; // Create unique ID
-
-                        const div = document.createElement('div');
-                        const checkbox = document.createElement('input');
-                        checkbox.type = 'checkbox';
-                        checkbox.id = checkboxId;
-                        checkbox.value = fullPlotPath; // Store the full path for backend
-                        checkbox.name = 'crossReportJsonFile';
-
-                        const label = document.createElement('label');
-                        label.htmlFor = checkboxId;
-                        label.textContent = plotFile.name; // Display just the filename
-
-                        div.appendChild(checkbox);
-                        div.appendChild(label);
-                        crossReportJsonOptionsDiv.appendChild(div);
+                    allComparisonPlotsContainer.innerHTML = ''; // Clear loading message
+                    
+                    // Group comparison plots by report folder for better organization
+                    const plotsByReport = {};
+                    data.comparison_plots.forEach(plot => {
+                        if (!plotsByReport[plot.report_folder]) {
+                            plotsByReport[plot.report_folder] = [];
+                        }
+                        plotsByReport[plot.report_folder].push(plot);
+                    });
+                    
+                    // Create a section for each report folder
+                    Object.keys(plotsByReport).forEach(reportFolder => {
+                        const reportSection = document.createElement('div');
+                        reportSection.classList.add('report-comparison-section');
+                        reportSection.style.marginBottom = '15px';
+                        
+                        const reportHeader = document.createElement('h4');
+                        reportHeader.textContent = reportFolder;
+                        reportHeader.style.marginBottom = '5px';
+                        reportHeader.style.borderBottom = '1px solid #555';
+                        reportSection.appendChild(reportHeader);
+                        
+                        // Add plots for this report
+                        plotsByReport[reportFolder].forEach(plot => {
+                            const checkboxId = `cross-plot-${plot.report_folder}-${plot.name.replace(/\.|\s/g, '-')}`;
+                            
+                            const div = document.createElement('div');
+                            div.style.marginLeft = '10px';
+                            
+                            const checkbox = document.createElement('input');
+                            checkbox.type = 'checkbox';
+                            checkbox.id = checkboxId;
+                            checkbox.value = plot.path;
+                            checkbox.name = 'crossReportJsonFile';
+                            
+                            const label = document.createElement('label');
+                            label.htmlFor = checkboxId;
+                            label.textContent = plot.name;
+                            
+                            div.appendChild(checkbox);
+                            div.appendChild(label);
+                            reportSection.appendChild(div);
+                        });
+                        
+                        allComparisonPlotsContainer.appendChild(reportSection);
                     });
                 } else {
-                    crossReportJsonOptionsDiv.innerHTML = '<p>No comparison plots found in this folder.</p>';
-                    if (!data.success && data.message) throw new Error(data.message);
+                    allComparisonPlotsContainer.innerHTML = '<p>No comparison plots found across any reports.</p>';
+                    if (!data.success) throw new Error(data.message || 'Failed to load comparison plots');
                 }
             })
             .catch(error => {
-                console.error('Error fetching comparison plots:', error);
-                crossReportJsonOptionsDiv.innerHTML = `<p class="status-error">Error: ${error.message}</p>`;
+                console.error('Error fetching all comparison plots:', error);
+                allComparisonPlotsContainer.innerHTML = `<p class="status-error">Error loading comparison plots: ${error.message}</p>`;
             });
     }
 
     // Handler for "Add Selected Plot(s) to Analysis" button
     function handleAddSelectedCrossJson() {
-        const selectedCheckboxes = crossReportJsonOptionsDiv.querySelectorAll('input[name="crossReportJsonFile"]:checked');
+        const selectedCheckboxes = document.querySelectorAll('input[name="crossReportJsonFile"]:checked');
         let newFilesAdded = false;
+        
         selectedCheckboxes.forEach(checkbox => {
             if (!selectedCrossReportJsonPaths.includes(checkbox.value)) {
                 selectedCrossReportJsonPaths.push(checkbox.value); // Add full path
                 
                 const listItem = document.createElement('li');
-                // Display a more user-friendly name, e.g., "Report_Timestamp / filename.json"
-                // checkbox.value is like "static/reports/TIMESTAMP/comparison_plots/FILENAME.json"
+                
+                // Extract report folder and filename for display
                 const pathParts = checkbox.value.split('/');
-                const displayName = pathParts.slice(2).join('/'); // e.g., TIMESTAMP/comparison_plots/FILENAME.json
-
-                listItem.textContent = displayName;
+                const reportFolder = pathParts[2]; // Assuming path is like "static/reports/REPORT_FOLDER/..."
+                const fileName = pathParts[pathParts.length - 1];
+                
+                listItem.innerHTML = `<strong>${reportFolder}</strong>: ${fileName}`;
                 listItem.dataset.path = checkbox.value; // Store full path for potential removal
+                
+                // Add remove button
+                const removeButton = document.createElement('button');
+                removeButton.textContent = 'Remove';
+                removeButton.className = 'small-button';
+                removeButton.style.marginLeft = '10px';
+                removeButton.addEventListener('click', function() {
+                    const index = selectedCrossReportJsonPaths.indexOf(checkbox.value);
+                    if (index > -1) {
+                        selectedCrossReportJsonPaths.splice(index, 1);
+                    }
+                    listItem.remove();
+                });
+                
+                listItem.appendChild(removeButton);
                 selectedCrossJsonListUl.appendChild(listItem);
                 newFilesAdded = true;
             }
             checkbox.checked = false; // Uncheck after adding
         });
-
+        
         if (!newFilesAdded && selectedCheckboxes.length > 0) {
             alert("The selected plot(s) are already in the list for cross-comparison.");
         } else if (selectedCheckboxes.length === 0) {
@@ -950,6 +1025,446 @@ document.addEventListener('DOMContentLoaded', () => {
             crossComparisonStatusMessage.className = 'status-error';
             console.error('Error during fetch /download_cross_comparison_csv:', error);
         });
+    }
+
+    // Function to fetch and populate the report management dropdown
+    function fetchAndPopulateManageReportList() {
+        fetch('/list_reports')
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to fetch report list');
+                return response.json();
+            })
+            .then(data => {
+                if (data.success && data.reports && data.reports.length > 0) {
+                    manageReportSelect.innerHTML = '<option value="">Select a report...</option>'; // Clear loading message
+                    data.reports.forEach(timestamp => {
+                        const option = document.createElement('option');
+                        option.value = timestamp;
+                        option.textContent = timestamp;
+                        manageReportSelect.appendChild(option);
+                    });
+                } else {
+                    manageReportSelect.innerHTML = '<option value="">No reports found</option>';
+                    if (!data.success) throw new Error(data.message || 'Failed to load reports');
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching report list for management:', error);
+                manageReportSelect.innerHTML = '<option value="">Error loading reports</option>';
+                manageStatusMessage.textContent = `Error: ${error.message}`;
+                manageStatusMessage.className = 'status-error';
+            });
+    }
+
+    // Handler for "Rename" button click
+    function handleRenameReportClick() {
+        const selectedReportName = manageReportSelect.value;
+        if (!selectedReportName) {
+            manageStatusMessage.textContent = 'Please select a report to rename.';
+            manageStatusMessage.className = 'status-error';
+            return;
+        }
+        
+        // Populate the new name input with the current name as a starting point
+        newReportNameInput.value = selectedReportName;
+        
+        // Show the rename modal
+        renameReportModal.style.display = 'flex';
+    }
+
+    // Handler for "Confirm Rename" button click
+    function handleConfirmRenameClick() {
+        const oldName = manageReportSelect.value;
+        const newName = newReportNameInput.value.trim();
+        
+        if (!newName) {
+            alert('Please enter a new name for the report.');
+            return;
+        }
+        
+        // Clear status and close modal
+        manageStatusMessage.textContent = 'Renaming report...';
+        manageStatusMessage.className = '';
+        renameReportModal.style.display = 'none';
+        
+        fetch('/rename_report', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ old_name: oldName, new_name: newName })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => { throw new Error(err.message || `Server error: ${response.status}`); });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                manageStatusMessage.textContent = data.message || 'Report renamed successfully.';
+                manageStatusMessage.className = 'status-success';
+                
+                // Refresh both report select dropdowns
+                fetchAndPopulateReportList();
+                fetchAndPopulateManageReportList();
+                
+                // Refresh comparison plots list if it exists
+                if (allComparisonPlotsContainer) {
+                    fetchAndPopulateAllComparisonPlots();
+                }
+            } else {
+                throw new Error(data.message || 'Failed to rename report.');
+            }
+        })
+        .catch(error => {
+            manageStatusMessage.textContent = `Error: ${error.message}`;
+            manageStatusMessage.className = 'status-error';
+            console.error('Error renaming report:', error);
+        });
+    }
+
+    // Handler for "Delete" button click
+    function handleDeleteReportClick() {
+        const selectedReportName = manageReportSelect.value;
+        if (!selectedReportName) {
+            manageStatusMessage.textContent = 'Please select a report to delete.';
+            manageStatusMessage.className = 'status-error';
+            return;
+        }
+        
+        // Create a confirmation dialog
+        const confirmDialog = document.createElement('div');
+        confirmDialog.className = 'modal';
+        confirmDialog.style.display = 'flex';
+        
+        confirmDialog.innerHTML = `
+            <div class="modal-content confirm-dialog">
+                <span class="close-modal">&times;</span>
+                <h3>Delete Report</h3>
+                <p>Are you sure you want to delete the report "${selectedReportName}"?<br>This action cannot be undone.</p>
+                <button class="confirm-delete">Yes, Delete</button>
+                <button class="cancel-delete">Cancel</button>
+            </div>
+        `;
+        
+        document.body.appendChild(confirmDialog);
+        
+        // Event listeners for the confirmation dialog
+        const closeBtn = confirmDialog.querySelector('.close-modal');
+        const confirmBtn = confirmDialog.querySelector('.confirm-delete');
+        const cancelBtn = confirmDialog.querySelector('.cancel-delete');
+        
+        closeBtn.addEventListener('click', () => {
+            document.body.removeChild(confirmDialog);
+        });
+        
+        cancelBtn.addEventListener('click', () => {
+            document.body.removeChild(confirmDialog);
+        });
+        
+        confirmBtn.addEventListener('click', () => {
+            document.body.removeChild(confirmDialog);
+            
+            // Proceed with deletion
+            manageStatusMessage.textContent = 'Deleting report...';
+            manageStatusMessage.className = '';
+            
+            fetch('/delete_report', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ report_name: selectedReportName })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw new Error(err.message || `Server error: ${response.status}`); });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    manageStatusMessage.textContent = data.message || 'Report deleted successfully.';
+                    manageStatusMessage.className = 'status-success';
+                    
+                    // Refresh both report select dropdowns
+                    fetchAndPopulateReportList();
+                    fetchAndPopulateManageReportList();
+                    
+                    // Refresh comparison plots list if it exists
+                    if (allComparisonPlotsContainer) {
+                        fetchAndPopulateAllComparisonPlots();
+                    }
+                } else {
+                    throw new Error(data.message || 'Failed to delete report.');
+                }
+            })
+            .catch(error => {
+                manageStatusMessage.textContent = `Error: ${error.message}`;
+                manageStatusMessage.className = 'status-error';
+                console.error('Error deleting report:', error);
+            });
+        });
+        
+        // Close modal when clicking outside of it
+        confirmDialog.addEventListener('click', event => {
+            if (event.target === confirmDialog) {
+                document.body.removeChild(confirmDialog);
+            }
+        });
+    }
+
+    // Handler for "View Contents" button click
+    function handleViewReportContentsClick() {
+        const selectedReportName = manageReportSelect.value;
+        if (!selectedReportName) {
+            manageStatusMessage.textContent = 'Please select a report to view contents.';
+            manageStatusMessage.className = 'status-error';
+            return;
+        }
+        
+        currentReportName = selectedReportName;
+        reportContentsModal.style.display = 'flex';
+        loadReportContents(selectedReportName);
+    }
+
+    // Function to load report contents
+    function loadReportContents(reportName) {
+        reportContentsTree.innerHTML = '<p>Loading report contents...</p>';
+        
+        fetch(`/list_report_contents/${reportName}`)
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw new Error(err.message || `Server error: ${response.status}`); });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Create the folder tree
+                    reportContentsTree.innerHTML = '';
+                    const folderTree = document.createElement('ul');
+                    folderTree.className = 'folder-tree';
+                    
+                    // Build tree from contents data
+                    buildFolderTree(folderTree, data.contents, reportName);
+                    
+                    reportContentsTree.appendChild(folderTree);
+                } else {
+                    throw new Error(data.message || 'Failed to load report contents.');
+                }
+            })
+            .catch(error => {
+                reportContentsTree.innerHTML = `<p class="status-error">Error: ${error.message}</p>`;
+                console.error('Error loading report contents:', error);
+            });
+    }
+
+    // Function to build the folder tree UI
+    function buildFolderTree(parentElement, items, reportName) {
+        items.forEach(item => {
+            const li = document.createElement('li');
+            
+            if (item.type === 'folder') {
+                // Create folder element
+                const folderDiv = document.createElement('div');
+                folderDiv.className = 'folder';
+                folderDiv.textContent = item.name;
+                folderDiv.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    this.classList.toggle('open');
+                    const childrenUl = this.nextElementSibling;
+                    if (childrenUl) {
+                        childrenUl.style.display = childrenUl.style.display === 'none' ? 'block' : 'none';
+                    }
+                });
+                
+                li.appendChild(folderDiv);
+                
+                // Create children container if there are children
+                if (item.children && item.children.length > 0) {
+                    const childrenUl = document.createElement('ul');
+                    childrenUl.style.display = 'none'; // Initially collapsed
+                    buildFolderTree(childrenUl, item.children, reportName);
+                    li.appendChild(childrenUl);
+                }
+            } else {
+                // Create file element
+                const fileDiv = document.createElement('div');
+                fileDiv.className = 'file';
+                fileDiv.innerHTML = `${item.name} <span style="color: var(--text-secondary); margin-left: 5px;">(${item.size})</span>`;
+                
+                // Add file actions
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'file-actions';
+                
+                // View button
+                const viewBtn = document.createElement('button');
+                viewBtn.textContent = 'View';
+                viewBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    viewFileContent(reportName, item.path);
+                });
+                actionsDiv.appendChild(viewBtn);
+                
+                // Download button
+                const downloadBtn = document.createElement('button');
+                downloadBtn.textContent = 'Download';
+                downloadBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    downloadFile(reportName, item.path, item.name);
+                });
+                actionsDiv.appendChild(downloadBtn);
+                
+                // Delete button
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.className = 'delete-file';
+                deleteBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    confirmDeleteFile(reportName, item.path);
+                });
+                actionsDiv.appendChild(deleteBtn);
+                
+                fileDiv.appendChild(actionsDiv);
+                li.appendChild(fileDiv);
+            }
+            
+            parentElement.appendChild(li);
+        });
+    }
+
+    // Function to view file content
+    function viewFileContent(reportName, filePath) {
+        fetch('/get_file_content', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ report_name: reportName, file_path: filePath })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => { throw new Error(err.message || `Server error: ${response.status}`); });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Create a modal to display the file content
+                const viewModal = document.createElement('div');
+                viewModal.className = 'modal';
+                viewModal.style.display = 'flex';
+                
+                let modalContent;
+                if (data.is_binary) {
+                    // For binary files
+                    modalContent = `
+                        <div class="modal-content" style="width: 500px;">
+                            <span class="close-modal">&times;</span>
+                            <h3>File: ${filePath}</h3>
+                            <p>${data.message}</p>
+                            <p>You can download this file to view its contents.</p>
+                            <div style="text-align: center; margin-top: 15px;">
+                                <button id="download-binary-file">Download File</button>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // For text files
+                    modalContent = `
+                        <div class="modal-content" style="width: 800px; max-width: 90%;">
+                            <span class="close-modal">&times;</span>
+                            <h3>File: ${filePath}</h3>
+                            <div style="max-height: 60vh; overflow-y: auto; background: var(--bg-dark-tertiary); padding: 15px; border-radius: 5px; white-space: pre-wrap; font-family: monospace;">${data.content}</div>
+                            <div style="text-align: right; margin-top: 15px;">
+                                <button id="close-view-modal">Close</button>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                viewModal.innerHTML = modalContent;
+                document.body.appendChild(viewModal);
+                
+                // Add event listeners
+                const closeBtn = viewModal.querySelector('.close-modal');
+                const closeViewBtn = viewModal.querySelector('#close-view-modal');
+                const downloadBinaryBtn = viewModal.querySelector('#download-binary-file');
+                
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', () => {
+                        document.body.removeChild(viewModal);
+                    });
+                }
+                
+                if (closeViewBtn) {
+                    closeViewBtn.addEventListener('click', () => {
+                        document.body.removeChild(viewModal);
+                    });
+                }
+                
+                if (downloadBinaryBtn) {
+                    downloadBinaryBtn.addEventListener('click', () => {
+                        downloadFile(reportName, filePath, filePath.split('/').pop());
+                        document.body.removeChild(viewModal);
+                    });
+                }
+                
+                // Close modal when clicking outside
+                viewModal.addEventListener('click', event => {
+                    if (event.target === viewModal) {
+                        document.body.removeChild(viewModal);
+                    }
+                });
+            } else {
+                throw new Error(data.message || 'Failed to get file content.');
+            }
+        })
+        .catch(error => {
+            alert(`Error viewing file: ${error.message}`);
+            console.error('Error viewing file:', error);
+        });
+    }
+
+    // Function to download a file
+    function downloadFile(reportName, filePath, fileName) {
+        // Construct download URL
+        const downloadUrl = `/static/reports/${reportName}/${filePath}`;
+        
+        // Create a temporary link and trigger the download
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    // Function to confirm and delete a file
+    function confirmDeleteFile(reportName, filePath) {
+        const fileName = filePath.split('/').pop();
+        
+        if (confirm(`Are you sure you want to delete the file "${fileName}"? This action cannot be undone.`)) {
+            fetch('/delete_report_file', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ report_name: reportName, file_path: filePath })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw new Error(err.message || `Server error: ${response.status}`); });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Refresh the contents
+                    loadReportContents(reportName);
+                } else {
+                    throw new Error(data.message || 'Failed to delete file.');
+                }
+            })
+            .catch(error => {
+                alert(`Error deleting file: ${error.message}`);
+                console.error('Error deleting file:', error);
+            });
+        }
     }
 
 }); // Close the DOMContentLoaded listener 

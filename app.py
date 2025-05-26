@@ -436,9 +436,9 @@ def generate_cross_report_comparison():
     """Generates a cross-report comparison plot from selected sources."""
     try:
         data = request.get_json()
-        selected_json_rel_paths = data.get('selected_comparison_json_paths') # e.g. ["static/reports/TS1/comp_plots/file.json", ...]
+        selected_json_rel_paths = data.get('selected_comparison_json_paths', []) # e.g. ["static/reports/TS1/comp_plots/file.json", ...]
         current_report_ts = data.get('current_report_timestamp')
-        current_selected_stages = data.get('current_report_selected_stages')
+        current_selected_stages = data.get('current_report_selected_stages', [])
 
         if not selected_json_rel_paths and not (current_report_ts and current_selected_stages):
             return jsonify({'success': False, 'message': 'No data sources provided for cross-comparison.'}), 400
@@ -449,16 +449,21 @@ def generate_cross_report_comparison():
         absolute_selected_json_paths = []
         if selected_json_rel_paths:
             for rel_path in selected_json_rel_paths:
+                # Clean up any URL artifacts in the rel_path
+                rel_path = rel_path.replace('%20', ' ').replace('\\', '/')
+                
                 # rel_path is like "static/reports/TIMESTAMP/comparison_plots/FILENAME.json"
                 # We need path from project root. os.path.join will handle this if base_dir is project root.
                 abs_path = os.path.normpath(os.path.join(base_dir, rel_path))
+                
                 # Security check: ensure it's within the static_reports_folder_abs
                 if not abs_path.startswith(static_reports_folder_abs):
                     print(f"Security Warning: Attempt to access path outside allowed reports directory: {rel_path}")
-                    # Optionally skip or return an error
                     continue 
+                
                 if os.path.exists(abs_path):
                     absolute_selected_json_paths.append(abs_path)
+                    print(f"Added JSON file for cross-comparison: {abs_path}")
                 else:
                     print(f"Warning: Selected comparison JSON not found at {abs_path} (from relative {rel_path})")
 
@@ -522,6 +527,284 @@ def download_cross_comparison_csv_data():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Error creating cross-comparison CSV: {e}'}), 500
+
+# --- New Endpoint to List All Comparison Plots ---
+@app.route('/list_all_comparison_plots', methods=['GET'])
+def list_all_comparison_plots():
+    """Lists all available comparison plots from all report folders for cross-comparison."""
+    try:
+        reports_folder_abs = app.config['REPORTS_FOLDER']
+        if not os.path.isdir(reports_folder_abs):
+            return jsonify({'success': False, 'message': 'Reports folder not found.'}), 404
+
+        all_comparison_plots = []
+        
+        # Get all report folders
+        report_folders = [d for d in os.listdir(reports_folder_abs) 
+                         if os.path.isdir(os.path.join(reports_folder_abs, d)) and d != 'cross_comparisons']
+        
+        # Check each report folder for comparison_plots
+        for report_folder in report_folders:
+            comparison_plots_dir = os.path.join(reports_folder_abs, report_folder, 'comparison_plots')
+            if os.path.isdir(comparison_plots_dir):
+                for filename in os.listdir(comparison_plots_dir):
+                    if '_stages_comparison_plot_' in filename and filename.endswith('.json'):
+                        # Store relative path from static folder for frontend use
+                        static_folder_name = os.path.basename(app.static_folder)
+                        rel_path = os.path.join(static_folder_name, 'reports', report_folder, 'comparison_plots', filename)
+                        rel_path = rel_path.replace('\\', '/')
+                        
+                        all_comparison_plots.append({
+                            'name': filename,
+                            'report_folder': report_folder,
+                            'path': rel_path,
+                            'display_name': f"{report_folder} - {filename}"
+                        })
+        
+        return jsonify({'success': True, 'comparison_plots': all_comparison_plots})
+    except Exception as e:
+        print(f"Error listing all comparison plots: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error listing all comparison plots: {e}'}), 500
+
+# --- Routes for Report Management ---
+@app.route('/rename_report', methods=['POST'])
+def rename_report():
+    """Renames a report folder."""
+    try:
+        data = request.get_json()
+        old_name = data.get('old_name')
+        new_name = data.get('new_name')
+        
+        if not old_name or not new_name:
+            return jsonify({'success': False, 'message': 'Missing old or new report name.'}), 400
+        
+        # Sanitize input to prevent directory traversal attacks
+        old_name = secure_filename(old_name)
+        new_name = secure_filename(new_name)
+        
+        old_path = os.path.join(app.config['REPORTS_FOLDER'], old_name)
+        new_path = os.path.join(app.config['REPORTS_FOLDER'], new_name)
+        
+        # Check if old folder exists
+        if not os.path.isdir(old_path):
+            return jsonify({'success': False, 'message': f'Report folder not found: {old_name}'}), 404
+        
+        # Check if new folder name already exists
+        if os.path.exists(new_path):
+            return jsonify({'success': False, 'message': f'A report with the name {new_name} already exists.'}), 409
+        
+        # Rename the folder
+        os.rename(old_path, new_path)
+        
+        return jsonify({'success': True, 'message': f'Report renamed from {old_name} to {new_name}'})
+    
+    except Exception as e:
+        print(f"Error renaming report: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error renaming report: {e}'}), 500
+
+@app.route('/delete_report', methods=['POST'])
+def delete_report():
+    """Deletes a report folder and all its contents."""
+    try:
+        data = request.get_json()
+        report_name = data.get('report_name')
+        
+        if not report_name:
+            return jsonify({'success': False, 'message': 'Missing report name.'}), 400
+        
+        # Sanitize input to prevent directory traversal attacks
+        report_name = secure_filename(report_name)
+        
+        report_path = os.path.join(app.config['REPORTS_FOLDER'], report_name)
+        
+        # Check if folder exists
+        if not os.path.isdir(report_path):
+            return jsonify({'success': False, 'message': f'Report folder not found: {report_name}'}), 404
+        
+        # Use shutil.rmtree to remove the directory and all its contents
+        import shutil
+        shutil.rmtree(report_path)
+        
+        return jsonify({'success': True, 'message': f'Report {report_name} deleted successfully'})
+    
+    except Exception as e:
+        print(f"Error deleting report: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error deleting report: {e}'}), 500
+
+@app.route('/list_report_contents/<report_name>', methods=['GET'])
+def list_report_contents(report_name):
+    """Lists the contents of a report folder."""
+    try:
+        # Sanitize input to prevent directory traversal attacks
+        report_name = secure_filename(report_name)
+        
+        report_path = os.path.join(app.config['REPORTS_FOLDER'], report_name)
+        
+        # Check if folder exists
+        if not os.path.isdir(report_path):
+            return jsonify({'success': False, 'message': f'Report folder not found: {report_name}'}), 404
+        
+        # Function to recursively get directory structure
+        def get_directory_structure(dir_path, base_path):
+            items = []
+            for item in os.listdir(dir_path):
+                item_path = os.path.join(dir_path, item)
+                # Get relative path for frontend use
+                rel_path = os.path.relpath(item_path, base_path)
+                
+                if os.path.isdir(item_path):
+                    # If it's a directory, recurse
+                    children = get_directory_structure(item_path, base_path)
+                    items.append({
+                        'name': item,
+                        'type': 'folder',
+                        'path': rel_path.replace('\\', '/'),
+                        'children': children
+                    })
+                else:
+                    # If it's a file, add its info
+                    file_size = os.path.getsize(item_path)
+                    size_display = f"{file_size} bytes"
+                    if file_size > 1024:
+                        size_display = f"{file_size / 1024:.2f} KB"
+                    if file_size > 1024 * 1024:
+                        size_display = f"{file_size / (1024 * 1024):.2f} MB"
+                    
+                    items.append({
+                        'name': item,
+                        'type': 'file',
+                        'path': rel_path.replace('\\', '/'),
+                        'size': size_display
+                    })
+            
+            # Sort folders first, then files
+            return sorted(items, key=lambda x: (0 if x['type'] == 'folder' else 1, x['name']))
+        
+        # Get the directory structure
+        contents = get_directory_structure(report_path, os.path.dirname(report_path))
+        
+        return jsonify({
+            'success': True, 
+            'report_name': report_name,
+            'contents': contents
+        })
+    
+    except Exception as e:
+        print(f"Error listing report contents: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error listing report contents: {e}'}), 500
+
+@app.route('/get_file_content', methods=['POST'])
+def get_file_content():
+    """Gets the content of a file in a report folder."""
+    try:
+        data = request.get_json()
+        report_name = data.get('report_name')
+        file_path = data.get('file_path')
+        
+        if not report_name or not file_path:
+            return jsonify({'success': False, 'message': 'Missing report name or file path.'}), 400
+        
+        # Sanitize input to prevent directory traversal attacks
+        report_name = secure_filename(report_name)
+        
+        # Construct the full path
+        report_folder = os.path.join(app.config['REPORTS_FOLDER'], report_name)
+        full_path = os.path.join(report_folder, file_path)
+        
+        # Verify the path is within the report folder
+        if not os.path.abspath(full_path).startswith(os.path.abspath(report_folder)):
+            return jsonify({'success': False, 'message': 'Invalid file path.'}), 403
+        
+        # Check if file exists
+        if not os.path.isfile(full_path):
+            return jsonify({'success': False, 'message': f'File not found: {file_path}'}), 404
+        
+        # Determine file type
+        file_extension = os.path.splitext(file_path)[1].lower()
+        
+        # Check if it's a binary file
+        binary_extensions = ['.png', '.jpg', '.jpeg', '.gif', '.pdf']
+        if file_extension in binary_extensions:
+            return jsonify({
+                'success': True,
+                'is_binary': True,
+                'file_path': file_path,
+                'message': 'Binary file cannot be displayed directly.'
+            })
+        
+        # For text-based files (JSON, CSV, TXT, etc.), read the content
+        try:
+            with open(full_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            return jsonify({
+                'success': True,
+                'is_binary': False,
+                'file_path': file_path,
+                'content': content
+            })
+        except UnicodeDecodeError:
+            # If we get a unicode error, it might be a binary file
+            return jsonify({
+                'success': True,
+                'is_binary': True,
+                'file_path': file_path,
+                'message': 'Binary file cannot be displayed directly.'
+            })
+    
+    except Exception as e:
+        print(f"Error getting file content: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error getting file content: {e}'}), 500
+
+@app.route('/delete_report_file', methods=['POST'])
+def delete_report_file():
+    """Deletes a file from a report folder."""
+    try:
+        data = request.get_json()
+        report_name = data.get('report_name')
+        file_path = data.get('file_path')
+        
+        if not report_name or not file_path:
+            return jsonify({'success': False, 'message': 'Missing report name or file path.'}), 400
+        
+        # Sanitize input to prevent directory traversal attacks
+        report_name = secure_filename(report_name)
+        
+        # Construct the full path
+        report_folder = os.path.join(app.config['REPORTS_FOLDER'], report_name)
+        full_path = os.path.join(report_folder, file_path)
+        
+        # Verify the path is within the report folder
+        if not os.path.abspath(full_path).startswith(os.path.abspath(report_folder)):
+            return jsonify({'success': False, 'message': 'Invalid file path.'}), 403
+        
+        # Check if file exists
+        if not os.path.isfile(full_path):
+            return jsonify({'success': False, 'message': f'File not found: {file_path}'}), 404
+        
+        # Delete the file
+        os.remove(full_path)
+        
+        return jsonify({
+            'success': True,
+            'message': f'File {file_path} deleted successfully.'
+        })
+    
+    except Exception as e:
+        print(f"Error deleting file: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error deleting file: {e}'}), 500
 
 # --- Main Execution ---
 if __name__ == '__main__':

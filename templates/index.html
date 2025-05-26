@@ -8,12 +8,57 @@
         <div class="form-group-inline">
             <label for="report-select">Select Report:</label>
             <select id="report-select">
-                <option value="">Loading reports...</option>
+                <option value=""></option>
                 <!-- Options will be populated by JS -->
             </select>
             <button id="load-report-button">Load Selected Report</button>
         </div>
          <div id="load-status-message"></div>
+    </div>
+
+    <!-- New Section for Report Management -->
+    <div id="manage-reports-section" class="card">
+        <h2>Manage Reports</h2>
+        <div class="form-group-inline">
+            <label for="manage-report-select">Select Report:</label>
+            <select id="manage-report-select">
+                <option value="">Loading reports...</option>
+                <!-- Options will be populated by JS -->
+            </select>
+            <button id="rename-report-button">Rename</button>
+            <button id="delete-report-button" class="delete-button">Delete</button>
+            <button id="view-report-contents-button">View Contents</button>
+        </div>
+        
+        <!-- Rename modal dialog (hidden by default) -->
+        <div id="rename-report-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h3>Rename Report</h3>
+                <div class="form-group">
+                    <label for="new-report-name">New Name:</label>
+                    <input type="text" id="new-report-name" placeholder="Enter new report name">
+                </div>
+                <button id="confirm-rename-button">Confirm Rename</button>
+            </div>
+        </div>
+        
+        <!-- Report contents modal dialog (hidden by default) -->
+        <div id="report-contents-modal" class="modal" style="display: none;">
+            <div class="modal-content report-contents-modal">
+                <span class="close-modal">&times;</span>
+                <h3>Report Contents</h3>
+                <div id="report-contents-tree">
+                    <p>Loading report contents...</p>
+                </div>
+                <div class="report-contents-actions">
+                    <button id="refresh-contents-button">Refresh</button>
+                    <button id="close-contents-button">Close</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="manage-status-message"></div>
     </div>
 
     <!-- Section for Uploading New Files -->
@@ -80,28 +125,28 @@
     <!-- New Section for Cross-Report Comparison -->
     <div id="cross-report-comparison-section" class="card" style="margin-top: 20px;">
         <h2>Cross-Report Comparison</h2>
-        <div class="form-group-inline">
-            <label for="cross-report-folder-select">Select Report Folder:</label>
-            <select id="cross-report-folder-select">
-                <option value="">Loading report folders...</option>
-                <!-- Options will be populated by JS -->
-            </select>
-        </div>
-        <div id="cross-report-json-select-container" style="margin-top: 10px; margin-bottom: 10px;">
-            <label>Available Comparison Plots in Selected Folder:</label>
-            <div id="cross-report-json-options">
-                <!-- Checkboxes for JSON files will be populated here -->
+        
+        <div id="cross-report-plots-container" style="margin-top: 10px; margin-bottom: 10px;">
+            <h3>Available Comparison Plots from All Reports</h3>
+            <div class="scrollable-comparison-plots" style="max-height: 300px; overflow-y: auto; border: 1px solid #444; padding: 10px;">
+                <div id="all-comparison-plots-container">
+                    <p>Loading available comparison plots...</p>
+                    <!-- Checkboxes for JSON files from all reports will be populated here -->
+                </div>
             </div>
         </div>
+        
         <div class="form-group-inline">
-             <button id="add-selected-cross-json-button">Add Selected Plot(s) to Analysis</button>
+            <button id="add-selected-cross-json-button">Add Selected Plot(s) to Analysis</button>
         </div>
+        
         <div id="selected-cross-json-container" style="margin-top: 10px;">
-            <label>Plots Added for Cross-Comparison:</label>
+            <h3>Plots Added for Cross-Comparison</h3>
             <ul id="selected-cross-json-list">
                 <!-- List items of selected JSON files will be populated here -->
             </ul>
         </div>
+        
         <button id="generate-cross-comparison-button" style="margin-top: 15px;">Generate Cross-Comparison Plot</button>
         <button id="download-cross-comparison-csv-button" style="margin-top: 10px; display: none;">Download Visible Plot Data (CSV)</button>
         <div id="cross-comparison-status-message" style="margin-top: 10px;"></div>

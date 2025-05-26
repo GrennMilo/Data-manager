@@ -717,4 +717,239 @@ button:active {
 body.light-theme .nav-links a.active-nav-link {
     background-color: var(--accent-blue);
     color: #ffffff;
+}
+
+/* Cross-comparison styles */
+.scrollable-comparison-plots {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    padding: 10px;
+    background-color: var(--card-bg-color);
+}
+
+.report-comparison-section {
+    margin-bottom: 15px;
+}
+
+.report-comparison-section h4 {
+    margin-bottom: 5px;
+    padding-bottom: 2px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--heading-color);
+}
+
+#selected-cross-json-list {
+    padding-left: 20px;
+}
+
+#selected-cross-json-list li {
+    margin-bottom: 8px;
+}
+
+.small-button {
+    padding: 2px 8px;
+    font-size: 0.8em;
+    background-color: var(--button-bg-color);
+    color: var(--button-text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.small-button:hover {
+    background-color: var(--button-hover-bg-color);
+}
+
+/* End of cross-comparison styles */
+
+/* Report management styles */
+.delete-button {
+    background-color: #dc3545;
+}
+
+.delete-button:hover {
+    background-color: #c82333;
+}
+
+/* Modal styles */
+.modal {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: var(--bg-dark-secondary);
+    padding: 25px;
+    border-radius: 10px;
+    width: 400px;
+    max-width: 90%;
+    position: relative;
+    border: 1px solid var(--border-color);
+}
+
+.close-modal {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--text-secondary);
+}
+
+.close-modal:hover {
+    color: var(--text-primary);
+}
+
+.modal h3 {
+    margin-top: 5px;
+    margin-bottom: 20px;
+}
+
+.modal input[type="text"] {
+    width: 100%;
+    padding: 12px;
+    box-sizing: border-box;
+    background-color: var(--bg-dark-tertiary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 6px;
+    font-size: 1em;
+    margin-bottom: 15px;
+}
+
+/* Confirmation dialog styles */
+.confirm-dialog {
+    text-align: center;
+}
+
+.confirm-dialog p {
+    margin-bottom: 20px;
+}
+
+.confirm-dialog button {
+    margin: 0 10px;
+}
+
+.confirm-dialog .confirm-delete {
+    background-color: #dc3545;
+}
+
+.confirm-dialog .confirm-delete:hover {
+    background-color: #c82333;
+}
+
+.confirm-dialog .cancel-delete {
+    background-color: #6c757d;
+}
+
+.confirm-dialog .cancel-delete:hover {
+    background-color: #5a6268;
+}
+
+/* End of report management styles */
+
+/* Report contents modal styling */
+.report-contents-modal {
+    width: 700px;
+    max-width: 90%;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+#report-contents-tree {
+    flex-grow: 1;
+    overflow-y: auto;
+    max-height: 60vh;
+    margin-bottom: 20px;
+    background-color: var(--bg-dark-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 15px;
+}
+
+.report-contents-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* Folder tree styling */
+.folder-tree {
+    padding-left: 0;
+    list-style-type: none;
+}
+
+.folder-tree ul {
+    padding-left: 20px;
+    list-style-type: none;
+}
+
+.folder-tree li {
+    margin: 5px 0;
+    position: relative;
+}
+
+.folder-tree .folder {
+    cursor: pointer;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+}
+
+.folder-tree .folder::before {
+    content: '📁';
+    margin-right: 5px;
+}
+
+.folder-tree .folder.open::before {
+    content: '📂';
+}
+
+.folder-tree .file {
+    display: flex;
+    align-items: center;
+}
+
+.folder-tree .file::before {
+    content: '📄';
+    margin-right: 5px;
+}
+
+.folder-tree .file-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 5px;
+}
+
+.folder-tree .file-actions button {
+    padding: 2px 8px;
+    font-size: 0.8em;
+    background-color: var(--bg-dark-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.folder-tree .file-actions button:hover {
+    background-color: var(--accent-blue);
+}
+
+.folder-tree .file-actions .delete-file {
+    background-color: #dc3545;
+}
+
+.folder-tree .file-actions .delete-file:hover {
+    background-color: #c82333;
 } 
