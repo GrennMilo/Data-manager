@@ -11,9 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- Element References ---
-    const themeSwitcherButton = document.getElementById('theme-switcher');
-    
-    // Only try to access these elements if they exist on the current page
     const uploadForm = document.getElementById('upload-form');
     const uploadStatusMessage = document.getElementById('upload-status-message');
     const loadingIndicator = document.getElementById('loading-indicator');
@@ -62,6 +59,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const crossComparisonStatusMessage = document.getElementById('cross-comparison-status-message');
     const crossComparisonPlotDiv = document.getElementById('cross-comparison-plot-div');
     const downloadCrossComparisonCSVButton = document.getElementById('download-cross-comparison-csv-button');
+    const crossReportFolderSelect = document.getElementById('cross-report-folder-select');
+
+    // --- Theme Switcher Elements ---
+    const themeSwitcherButton = document.getElementById('theme-switcher');
 
     // --- Global Variables for Cross-Report Comparison ---
     let selectedCrossReportJsonPaths = []; // Stores full paths for backend
@@ -76,6 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (reportSelect) fetchAndPopulateReportList();
     if (manageReportSelect) fetchAndPopulateManageReportList();
     if (allComparisonPlotsContainer) fetchAndPopulateAllComparisonPlots();
+    if (crossReportFolderSelect) fetchAndPopulateCrossReportFolderList(); // New function to populate the cross-report folder selector
 
     // --- Event Listeners ---
     // Always add theme switch listener
@@ -110,6 +112,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (downloadCrossComparisonCSVButton) {
         downloadCrossComparisonCSVButton.addEventListener('click', handleDownloadCrossComparisonCSV);
+    }
+
+    if (crossReportFolderSelect) {
+        crossReportFolderSelect.addEventListener('change', handleCrossReportFolderSelectChange);
     }
 
     if (renameReportButton) {
@@ -171,13 +177,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
         if (savedTheme === 'light') {
             document.body.classList.add('light-theme');
-            if (themeSwitcherButton) themeSwitcherButton.textContent = '☀️';
+            themeSwitcherButton.textContent = '☀️';
         } else {
             document.body.classList.remove('light-theme');
-            if (themeSwitcherButton) themeSwitcherButton.textContent = '🌙';
+            themeSwitcherButton.textContent = '🌙';
         }
-        // Re-render visible plots with the new theme
-        updateVisiblePlotsTheme();
     }
 
     function handleThemeSwitch() {
@@ -858,7 +862,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- New Functions to Parse Trace Names from Cross-Comparison Plot ---
+    // --- New Function to Parse Trace Names from Cross-Comparison Plot ---
     function parseCrossComparisonTraceName(traceName) {
         let source = "Unknown_Source";
         let stage = "Unknown_Stage";
@@ -1465,6 +1469,48 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Error deleting file:', error);
             });
         }
+    }
+
+    // New function to populate the cross-report folder selector
+    function fetchAndPopulateCrossReportFolderList() {
+        fetch('/list_cross_report_folders')
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to fetch cross-report folders');
+                return response.json();
+            })
+            .then(data => {
+                if (data.success && data.folders && data.folders.length > 0) {
+                    crossReportFolderSelect.innerHTML = '<option value="">Select a report folder...</option>'; // Clear loading message
+                    data.folders.forEach(folder => {
+                        const option = document.createElement('option');
+                        option.value = folder;
+                        option.textContent = folder;
+                        crossReportFolderSelect.appendChild(option);
+                    });
+                } else {
+                    crossReportFolderSelect.innerHTML = '<option value="">No report folders found</option>';
+                    if (!data.success) throw new Error(data.message || 'Failed to load report folders');
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching cross-report folders:', error);
+                crossReportFolderSelect.innerHTML = '<option value="">Error loading report folders</option>';
+                manageStatusMessage.textContent = `Error: ${error.message}`;
+                manageStatusMessage.className = 'status-error';
+            });
+    }
+
+    // New function to handle cross-report folder selection change
+    function handleCrossReportFolderSelectChange() {
+        const selectedFolder = crossReportFolderSelect.value;
+        if (!selectedFolder) {
+            manageStatusMessage.textContent = 'Please select a report folder.';
+            manageStatusMessage.className = 'status-error';
+            return;
+        }
+        
+        // Fetch and populate the cross-report comparison plots
+        fetchAndPopulateAllComparisonPlots();
     }
 
 }); // Close the DOMContentLoaded listener 

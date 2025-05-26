@@ -10,12 +10,6 @@ from datetime import datetime
 
 app = Flask(__name__, template_folder='templates', static_folder='static') # Create Flask application instance
 
-# --- Context Processors ---
-@app.context_processor
-def inject_current_year():
-    """Injects the current year into all templates."""
-    return {'current_year': datetime.utcnow().year}
-
 # --- Configuration ---
 # Define the path for uploaded files. Create the directory if it doesn't exist.
 UPLOAD_FOLDER = 'uploads'
@@ -39,31 +33,9 @@ def allowed_file(filename):
 
 # --- Routes ---
 @app.route('/')
-def root_redirect():
-    """Redirects the base URL to the new home page."""
-    from flask import redirect, url_for
-    return redirect(url_for('home'))
-
-@app.route('/home')
-def home():
-    """Serves the new home page for selecting a process."""
-    return render_template('home.html')
-
-@app.route('/nh3-synthesis')
-def nh3_synthesis_processor():
-    """ Serves the main HTML page for NH3 Synthesis data processing. """
+def index():
+    """ Serves the main HTML page. """
     return render_template('index.html')
-
-@app.route('/meoh-synthesis')
-def meoh_synthesis_processor():
-    """ Placeholder for Methanol Synthesis data processing page. """
-    # For now, just indicate it's coming soon. Can create a simple coming_soon.html or similar.
-    return render_template('meoh_synthesis.html') # Will create this simple page
-
-@app.route('/nh3-cracking')
-def nh3_cracking_processor():
-    """ Placeholder for NH3 Cracking data processing page. """
-    return render_template('nh3_cracking.html') # Will create this simple page
 
 @app.route('/process', methods=['POST'])
 def process_files():

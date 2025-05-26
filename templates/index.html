@@ -1,7 +1,19 @@
-{% extends "base_layout.html" %}
-{% block title %}NH3 Synthesis Data Processor{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skid NH3 Syn. Data Processor</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src='https://cdn.plot.ly/plotly-3.0.1.min.js'></script>
+</head>
+<body>
+    <!-- Optional: Wrap title -->
+    <div class="title-container">
+        <h1>Skid NH3 Syn. Data Processor</h1>
+        <button id="theme-switcher" class="theme-button">🌙</button>
+    </div>
 
-{% block content %}
     <!-- Section for Loading Previous Reports -->
     <div id="load-report-section" class="card">
         <h2>Load Previous Report</h2>
@@ -152,4 +164,7 @@
         <div id="cross-comparison-status-message" style="margin-top: 10px;"></div>
         <div id="cross-comparison-plot-div" class="plotly-plot-container" style="margin-top: 20px; display: none;"></div>
     </div>
-{% endblock %} 
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html> 

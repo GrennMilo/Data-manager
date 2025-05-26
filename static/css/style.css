@@ -326,7 +326,8 @@ button:active {
 }
 
 #overall-plot-container img,
-.step-plot-container img {
+.step-plot-container img,
+#comparison-plot-container img {
     max-width: 100%;
     height: auto;
     border: 1px solid #ddd;
@@ -397,15 +398,6 @@ button:active {
 /* Ensure buttons in form-group-inline don't cause overflow or unwanted shrinking */
 .form-group-inline button {
     flex-shrink: 0; /* Prevent buttons from shrinking too much */
-}
-
-#overall-plot-container img,
-#step-plot-container img,
-#comparison-plot-container img {
-    max-width: 100%;
-    height: auto;
-    border: 1px solid #ddd;
-    margin-top: 10px;
 }
 
 /* --- New Navbar Styles --- */
