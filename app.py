@@ -7,6 +7,8 @@ import io # Needed for sending file data from memory
 import glob # Import glob
 from main_web_processor import generate_reports, generate_comparison_plot, create_cross_comparison_plot # Import new function
 from datetime import datetime
+import json
+import time
 
 app = Flask(__name__, template_folder='templates', static_folder='static') # Create Flask application instance
 
@@ -36,6 +38,350 @@ def allowed_file(filename):
 def index():
     """ Serves the main HTML page. """
     return render_template('index.html')
+
+@app.route('/reports')
+def reports_page():
+    """ Serves the reports management page. """
+    return render_template('reports.html')
+
+@app.route('/upload')
+def upload_page():
+    """ Serves the upload page. """
+    return render_template('upload.html')
+
+@app.route('/visualize')
+def visualize_page():
+    """ Serves the visualization page. """
+    return render_template('visualize.html')
+
+# API Routes for the frontend
+
+@app.route('/api/reports')
+def api_reports():
+    """Returns a list of available reports with basic metadata."""
+    try:
+        reports_base = app.config['REPORTS_FOLDER']
+        # List only directories directly under the reports folder
+        all_items = os.listdir(reports_base)
+        report_folders = [d for d in all_items if os.path.isdir(os.path.join(reports_base, d))]
+        # Sort by creation time, newest first
+        report_folders.sort(key=lambda x: os.path.getctime(os.path.join(reports_base, x)), reverse=True)
+        
+        reports_data = []
+        for folder in report_folders:
+            # Get basic stats for each report
+            folder_path = os.path.join(reports_base, folder)
+            created_at = datetime.fromtimestamp(os.path.getctime(folder_path)).strftime('%Y-%m-%d %H:%M:%S')
+            
+            # Count number of stages by looking for step_* directories
+            step_folders = [d for d in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, d)) and d.startswith('step_')]
+            
+            reports_data.append({
+                'name': folder,
+                'created_at': created_at,
+                'stages': len(step_folders)
+            })
+        
+        return jsonify({'success': True, 'reports': reports_data})
+    except Exception as e:
+        print(f"Error listing reports for API: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error listing reports: {e}'}), 500
+
+@app.route('/api/report-stats/<report_name>')
+def api_report_stats(report_name):
+    """Returns detailed statistics for a specific report."""
+    try:
+        report_folder = os.path.join(app.config['REPORTS_FOLDER'], report_name)
+        
+        if not os.path.isdir(report_folder):
+            return jsonify({'success': False, 'message': 'Report not found'}), 404
+            
+        # Get basic stats
+        created_at = datetime.fromtimestamp(os.path.getctime(report_folder)).strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Count files and get total size
+        total_files = 0
+        total_size = 0
+        for root, dirs, files in os.walk(report_folder):
+            total_files += len(files)
+            total_size += sum(os.path.getsize(os.path.join(root, file)) for file in files)
+        
+        # Count stages and data points
+        step_folders = sorted(
+            [d for d in os.listdir(report_folder) if os.path.isdir(os.path.join(report_folder, d)) and d.startswith('step_')],
+            key=lambda x: int(x.split('_')[1])
+        )
+        
+        stages_data = []
+        total_data_points = 0
+        
+        for step_folder in step_folders:
+            step_num = int(step_folder.split('_')[1])
+            step_folder_path = os.path.join(report_folder, step_folder)
+            
+            # Try to read data from JSON file
+            json_file = os.path.join(step_folder_path, f"step_{step_num}_data.json")
+            data_points = 0
+            max_temp = None
+            duration = None
+            
+            if os.path.exists(json_file):
+                try:
+                    with open(json_file, 'r') as f:
+                        data = json.load(f)
+                    data_points = len(data)
+                    total_data_points += data_points
+                    
+                    # Extract max temperature if available
+                    temps = []
+                    dates = []
+                    for entry in data:
+                        # Look for temperature in various possible column names
+                        if 'T Heater 1_LV' in entry:
+                            temps.append(entry['T Heater 1_LV'])
+                        elif 'T Heater 1' in entry:
+                            temps.append(entry['T Heater 1'])
+                            
+                        # Extract dates for duration calculation
+                        if 'Date' in entry:
+                            dates.append(entry['Date'])
+                    
+                    if temps:
+                        max_temp = round(max(t for t in temps if isinstance(t, (int, float))), 1)
+                    
+                    # Calculate duration if dates are available
+                    if dates and len(dates) >= 2:
+                        try:
+                            start_date = datetime.fromisoformat(dates[0].replace('Z', '+00:00'))
+                            end_date = datetime.fromisoformat(dates[-1].replace('Z', '+00:00'))
+                            duration_seconds = (end_date - start_date).total_seconds()
+                            hours = int(duration_seconds // 3600)
+                            minutes = int((duration_seconds % 3600) // 60)
+                            duration = f"{hours}h {minutes}m"
+                        except:
+                            duration = "N/A"
+                except Exception as e:
+                    print(f"Error processing JSON for stage {step_num}: {e}")
+                    
+            stages_data.append({
+                'number': step_num,
+                'data_points': data_points,
+                'max_temp': max_temp,
+                'duration': duration
+            })
+        
+        # Create export URL
+        export_url = f"/static/reports/{report_name}/overall_merged_data.csv"
+        
+        return jsonify({
+            'success': True,
+            'created_at': created_at,
+            'stages': len(step_folders),
+            'data_points': total_data_points,
+            'files_count': total_files,
+            'total_size': total_size,
+            'stages_data': stages_data,
+            'export_url': export_url if os.path.exists(os.path.join(app.static_folder, 'reports', report_name, 'overall_merged_data.csv')) else None
+        })
+    except Exception as e:
+        print(f"Error getting report stats: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error getting report stats: {e}'}), 500
+
+@app.route('/api/report-contents/<report_name>')
+def api_report_contents(report_name):
+    """Returns the file/folder structure of a report."""
+    try:
+        report_folder = os.path.join(app.config['REPORTS_FOLDER'], report_name)
+        
+        if not os.path.isdir(report_folder):
+            return jsonify({'success': False, 'message': 'Report not found'}), 404
+            
+        # Create a function to recursively build the structure
+        def get_folder_structure(path, max_depth=2, current_depth=0):
+            items = []
+            
+            if current_depth > max_depth:
+                return items
+                
+            for item in os.listdir(path):
+                item_path = os.path.join(path, item)
+                
+                if os.path.isdir(item_path):
+                    children = get_folder_structure(item_path, max_depth, current_depth + 1) if current_depth < max_depth else []
+                    items.append({
+                        'name': item,
+                        'type': 'folder',
+                        'children': children
+                    })
+                else:
+                    size = os.path.getsize(item_path)
+                    size_str = f"{size} bytes"
+                    if size > 1024:
+                        size_str = f"{size/1024:.1f} KB"
+                    if size > 1024*1024:
+                        size_str = f"{size/(1024*1024):.1f} MB"
+                        
+                    items.append({
+                        'name': item,
+                        'type': 'file',
+                        'size': size_str
+                    })
+            
+            return sorted(items, key=lambda x: (0 if x['type'] == 'folder' else 1, x['name']))
+            
+        contents = get_folder_structure(report_folder)
+        
+        return jsonify({
+            'success': True,
+            'contents': contents
+        })
+    except Exception as e:
+        print(f"Error getting report contents: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error getting report contents: {e}'}), 500
+
+@app.route('/api/rename-report', methods=['POST'])
+def api_rename_report():
+    """Renames a report folder."""
+    try:
+        data = request.get_json()
+        old_name = data.get('old_name')
+        new_name = data.get('new_name')
+        
+        if not old_name or not new_name:
+            return jsonify({'success': False, 'message': 'Missing old or new report name.'}), 400
+        
+        # Sanitize input to prevent directory traversal attacks
+        from werkzeug.utils import secure_filename
+        old_name = secure_filename(old_name)
+        new_name = secure_filename(new_name)
+        
+        old_path = os.path.join(app.config['REPORTS_FOLDER'], old_name)
+        new_path = os.path.join(app.config['REPORTS_FOLDER'], new_name)
+        
+        # Check if old folder exists
+        if not os.path.isdir(old_path):
+            return jsonify({'success': False, 'message': f'Report folder not found: {old_name}'}), 404
+        
+        # Check if new folder name already exists
+        if os.path.exists(new_path):
+            return jsonify({'success': False, 'message': f'A report with the name {new_name} already exists.'}), 409
+        
+        # Rename the folder
+        os.rename(old_path, new_path)
+        
+        return jsonify({'success': True, 'message': f'Report renamed from {old_name} to {new_name}'})
+    except Exception as e:
+        print(f"Error renaming report: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error renaming report: {e}'}), 500
+
+@app.route('/api/delete-report', methods=['POST'])
+def api_delete_report():
+    """Deletes a report folder and all its contents."""
+    try:
+        data = request.get_json()
+        report_name = data.get('report_name')
+        
+        if not report_name:
+            return jsonify({'success': False, 'message': 'Missing report name.'}), 400
+        
+        # Sanitize input to prevent directory traversal attacks
+        from werkzeug.utils import secure_filename
+        report_name = secure_filename(report_name)
+        
+        report_path = os.path.join(app.config['REPORTS_FOLDER'], report_name)
+        
+        # Check if folder exists
+        if not os.path.isdir(report_path):
+            return jsonify({'success': False, 'message': f'Report folder not found: {report_name}'}), 404
+        
+        # Use shutil.rmtree to remove the directory and all its contents
+        import shutil
+        shutil.rmtree(report_path)
+        
+        return jsonify({'success': True, 'message': f'Report {report_name} deleted successfully'})
+    except Exception as e:
+        print(f"Error deleting report: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error deleting report: {e}'}), 500
+
+@app.route('/api/dashboard-data')
+def api_dashboard_data():
+    """Returns basic statistics for the dashboard."""
+    try:
+        reports_base = app.config['REPORTS_FOLDER']
+        
+        # List only directories directly under the reports folder
+        all_items = os.listdir(reports_base)
+        report_folders = [d for d in all_items if os.path.isdir(os.path.join(reports_base, d))]
+        
+        # Sort by creation time, newest first
+        report_folders.sort(key=lambda x: os.path.getctime(os.path.join(reports_base, x)), reverse=True)
+        
+        # Count total reports
+        total_reports = len(report_folders)
+        
+        # Count recent uploads (last 7 days)
+        one_week_ago = time.time() - (7 * 24 * 60 * 60)
+        recent_uploads = sum(1 for folder in report_folders if os.path.getctime(os.path.join(reports_base, folder)) > one_week_ago)
+        
+        # Get information for the most recent reports (up to 5)
+        recent_reports = []
+        for folder in report_folders[:5]:
+            folder_path = os.path.join(reports_base, folder)
+            created_at = datetime.fromtimestamp(os.path.getctime(folder_path)).strftime('%Y-%m-%d %H:%M:%S')
+            
+            # Count number of stages by looking for step_* directories
+            step_folders = [d for d in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, d)) and d.startswith('step_')]
+            
+            recent_reports.append({
+                'name': folder,
+                'created_at': created_at,
+                'stages': len(step_folders)
+            })
+        
+        return jsonify({
+            'success': True,
+            'total_reports': total_reports,
+            'recent_uploads': recent_uploads,
+            'recent_reports': recent_reports
+        })
+    except Exception as e:
+        print(f"Error getting dashboard data: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error getting dashboard data: {e}'}), 500
+
+@app.route('/api/list-cross-report-folders')
+def api_list_cross_report_folders():
+    """Returns a list of report folders for cross-report comparison."""
+    try:
+        reports_base = app.config['REPORTS_FOLDER']
+        
+        # List only directories directly under the reports folder
+        all_items = os.listdir(reports_base)
+        report_folders = [d for d in all_items if os.path.isdir(os.path.join(reports_base, d))]
+        
+        # Sort by name
+        report_folders.sort()
+        
+        return jsonify({
+            'success': True,
+            'folders': report_folders
+        })
+    except Exception as e:
+        print(f"Error listing cross-report folders: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error listing folders: {e}'}), 500
 
 @app.route('/process', methods=['POST'])
 def process_files():

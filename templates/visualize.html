@@ -1,0 +1,584 @@
+{% extends "layout.html" %}
+
+{% block title %}Visualize Data - Skid NH3 Syn. Data Processor{% endblock %}
+
+{% block content %}
+<div class="visualize-page">
+    <div class="page-header">
+        <h2 class="section-title">Data Visualization</h2>
+        <div class="report-selector">
+            <select id="report-select" class="report-dropdown" title="Select a report to visualize" aria-label="Select a report to visualize">
+                <option value="">Select a report...</option>
+                <!-- Options populated by JS -->
+            </select>
+            <button id="load-report-btn" class="btn-primary"><i class="fas fa-eye"></i> Load</button>
+        </div>
+    </div>
+    
+    <div class="visualization-container" id="visualization-container">
+        <div class="empty-state" id="empty-state">
+            <i class="fas fa-chart-area empty-icon"></i>
+            <p>Select a report to visualize data</p>
+        </div>
+        
+        <!-- Content will be populated by JS when a report is loaded -->
+    </div>
+    
+    <!-- Overall Report Section (initially hidden) -->
+    <div id="overall-report-section" class="visualization-section" style="display: none;">
+        <div class="section-header">
+            <h3>Overall Analysis</h3>
+            <div class="actions">
+                <a id="overall-csv-link" href="#" class="btn-small"><i class="fas fa-download"></i> Download CSV</a>
+            </div>
+        </div>
+        <div id="overall-plot-container" class="plot-container">
+            <!-- Plot will be inserted here -->
+        </div>
+    </div>
+    
+    <!-- Stages Section (initially hidden) -->
+    <div id="stages-section" class="visualization-section" style="display: none;">
+        <div class="section-header">
+            <h3>Stage Analysis</h3>
+        </div>
+        <div class="stages-navigation">
+            <div class="stage-selector">
+                <h4>Select Stages</h4>
+                <div id="stage-selector-items" class="stage-buttons">
+                    <!-- Stage buttons populated by JS -->
+                </div>
+            </div>
+            <div class="stage-actions">
+                <button id="download-selected-stages-button" class="btn-secondary">
+                    <i class="fas fa-download"></i> Download Selected CSV
+                </button>
+                <div class="input-group">
+                    <input type="text" id="comparison-prefix-input" placeholder="Comparison Plot Prefix (Optional)">
+                    <button id="compare-stages-button" class="btn-primary">
+                        <i class="fas fa-chart-line"></i> Compare Selected
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div id="stage-content" class="stage-content">
+            <div class="empty-stage-message">Select a stage to view its plot</div>
+        </div>
+        <div id="comparison-plot-container" class="comparison-plot-container" style="display: none;">
+            <div class="section-header">
+                <h3>Stage Comparison</h3>
+            </div>
+            <div id="comparison-plot-div" class="plot-container">
+                <!-- Comparison plot will be inserted here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Cross-Report Comparison Section (initially hidden) -->
+    <div id="cross-report-section" class="visualization-section" style="display: none;">
+        <div class="section-header">
+            <h3>Cross-Report Comparison</h3>
+        </div>
+        <div class="cross-report-controls">
+            <div class="available-plots">
+                <h4>Available Comparison Plots</h4>
+                <div class="plots-container scrollable-container" id="all-comparison-plots-container">
+                    <p class="loading-text">Loading available plots...</p>
+                    <!-- Checkboxes populated by JS -->
+                </div>
+                <button id="add-selected-cross-json-button" class="btn-secondary">
+                    <i class="fas fa-plus"></i> Add Selected Plot(s)
+                </button>
+            </div>
+            <div class="selected-plots">
+                <h4>Selected for Comparison</h4>
+                <ul id="selected-cross-json-list" class="selected-plots-list">
+                    <!-- Selected plots populated by JS -->
+                </ul>
+                <div class="cross-actions">
+                    <button id="generate-cross-comparison-button" class="btn-primary">
+                        <i class="fas fa-chart-line"></i> Generate Cross-Comparison
+                    </button>
+                    <button id="download-cross-comparison-csv-button" class="btn-secondary" style="display: none;">
+                        <i class="fas fa-download"></i> Download Visible Data
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div id="cross-comparison-status-message" class="status-message"></div>
+        <div id="cross-comparison-plot-container" class="plot-container" style="display: none;">
+            <!-- Cross-comparison plot will be inserted here -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize the visualization page
+    initVisualizationPage();
+});
+
+function initVisualizationPage() {
+    // Load available reports
+    loadReportsList();
+    
+    // Set up event listeners
+    document.getElementById('load-report-btn').addEventListener('click', loadSelectedReport);
+    document.getElementById('download-selected-stages-button').addEventListener('click', downloadSelectedStagesCSV);
+    document.getElementById('compare-stages-button').addEventListener('click', compareSelectedStages);
+    document.getElementById('add-selected-cross-json-button').addEventListener('click', addSelectedPlotsToComparison);
+    document.getElementById('generate-cross-comparison-button').addEventListener('click', generateCrossComparison);
+    document.getElementById('download-cross-comparison-csv-button').addEventListener('click', downloadCrossComparisonCSV);
+    
+    // Check if a report is specified in the URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const reportParam = urlParams.get('report');
+    if (reportParam) {
+        // Wait for reports to load, then select and load the specified report
+        setTimeout(() => {
+            const reportSelect = document.getElementById('report-select');
+            if (reportSelect) {
+                reportSelect.value = reportParam;
+                loadSelectedReport();
+            }
+        }, 500);
+    }
+}
+
+function loadReportsList() {
+    showLoading(true);
+    
+    fetch('/api/reports')
+        .then(response => response.json())
+        .then(data => {
+            showLoading(false);
+            
+            if (data.success) {
+                populateReportsDropdown(data.reports);
+            } else {
+                showNotification('Error loading reports: ' + data.message, 'error');
+            }
+        })
+        .catch(error => {
+            showLoading(false);
+            console.error('Error fetching reports:', error);
+            showNotification('Failed to load reports. Please try again.', 'error');
+        });
+}
+
+function populateReportsDropdown(reports) {
+    const selectElement = document.getElementById('report-select');
+    
+    // Keep the first option and remove others
+    while (selectElement.options.length > 1) {
+        selectElement.remove(1);
+    }
+    
+    if (reports && reports.length > 0) {
+        reports.forEach(report => {
+            const option = document.createElement('option');
+            option.value = report.name;
+            option.textContent = report.name;
+            selectElement.appendChild(option);
+        });
+    } else {
+        const option = document.createElement('option');
+        option.disabled = true;
+        option.textContent = 'No reports available';
+        selectElement.appendChild(option);
+    }
+}
+
+function loadSelectedReport() {
+    const selectedReport = document.getElementById('report-select').value;
+    
+    if (!selectedReport) {
+        showNotification('Please select a report to load.', 'warning');
+        return;
+    }
+    
+    showLoading(true);
+    
+    fetch(`/load_report/${encodeURIComponent(selectedReport)}`)
+        .then(response => response.json())
+        .then(data => {
+            showLoading(false);
+            
+            if (data.success) {
+                displayReportData(data);
+            } else {
+                showNotification('Error loading report: ' + data.message, 'error');
+            }
+        })
+        .catch(error => {
+            showLoading(false);
+            console.error('Error fetching report:', error);
+            showNotification('Failed to load report. Please try again.', 'error');
+        });
+}
+
+function displayReportData(data) {
+    // Hide empty state
+    document.getElementById('empty-state').style.display = 'none';
+    
+    // Display timestamp in header
+    document.getElementById('visualization-container').innerHTML = `
+        <div class="report-info-header">
+            <h3>Report: ${data.timestamp_prefix}</h3>
+            <div class="report-meta">
+                <span>Number of Stages: ${data.num_stages}</span>
+            </div>
+        </div>
+    `;
+    
+    // Show overall section if available
+    const overallSection = document.getElementById('overall-report-section');
+    if (data.overall_plot_path) {
+        // Set the CSV link
+        const csvLink = document.getElementById('overall-csv-link');
+        if (data.overall_csv_path) {
+            csvLink.href = `/${data.overall_csv_path}`;
+            csvLink.style.display = 'inline-block';
+        } else {
+            csvLink.style.display = 'none';
+        }
+        
+        // Load the plot
+        const plotContainer = document.getElementById('overall-plot-container');
+        loadPlotlyJSON(data.overall_plot_path, plotContainer);
+        
+        overallSection.style.display = 'block';
+    } else {
+        overallSection.style.display = 'none';
+    }
+    
+    // Show stages section if available
+    const stagesSection = document.getElementById('stages-section');
+    if (data.step_reports && data.step_reports.length > 0) {
+        populateStageButtons(data.step_reports);
+        stagesSection.style.display = 'block';
+    } else {
+        stagesSection.style.display = 'none';
+    }
+    
+    // Show cross-report section
+    document.getElementById('cross-report-section').style.display = 'block';
+    
+    // Load available comparison plots
+    loadAvailableComparisonPlots();
+}
+
+function loadPlotlyJSON(jsonPath, container) {
+    container.innerHTML = '<div class="loading-plot">Loading plot...</div>';
+    
+    fetch(`/${jsonPath}`)
+        .then(response => response.json())
+        .then(plotData => {
+            container.innerHTML = '';
+            Plotly.newPlot(container, plotData.data, plotData.layout);
+        })
+        .catch(error => {
+            console.error('Error loading plot:', error);
+            container.innerHTML = '<div class="error-message">Error loading plot</div>';
+        });
+}
+
+function populateStageButtons(stageReports) {
+    const stageButtonsContainer = document.getElementById('stage-selector-items');
+    stageButtonsContainer.innerHTML = '';
+    
+    stageReports.forEach(report => {
+        const stageBtn = document.createElement('button');
+        stageBtn.className = 'stage-button';
+        stageBtn.setAttribute('data-stage', report.step_number);
+        stageBtn.setAttribute('data-plot-path', report.plot_path);
+        stageBtn.setAttribute('data-json-path', report.json_path);
+        stageBtn.innerHTML = `Stage ${report.step_number}`;
+        
+        stageBtn.addEventListener('click', function() {
+            // Toggle selection
+            this.classList.toggle('selected');
+            
+            // Load plot for clicked stage
+            loadStagePlot(report.plot_path, report.step_number);
+        });
+        
+        stageButtonsContainer.appendChild(stageBtn);
+    });
+}
+
+function loadStagePlot(plotPath, stageNumber) {
+    const stageContent = document.getElementById('stage-content');
+    stageContent.innerHTML = `
+        <div class="stage-plot-container">
+            <h4>Stage ${stageNumber}</h4>
+            <div id="stage-plot-${stageNumber}" class="plot-container"></div>
+        </div>
+    `;
+    
+    loadPlotlyJSON(plotPath, document.getElementById(`stage-plot-${stageNumber}`));
+}
+
+function downloadSelectedStagesCSV() {
+    const selectedStages = getSelectedStages();
+    
+    if (selectedStages.length === 0) {
+        showNotification('Please select at least one stage.', 'warning');
+        return;
+    }
+    
+    showLoading(true);
+    
+    fetch('/download_selected_stages', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            json_paths: selectedStages.map(stage => stage.jsonPath)
+        })
+    })
+    .then(response => {
+        showLoading(false);
+        
+        if (response.ok) {
+            // Create a hidden link to trigger the download
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(response.blob());
+            link.download = 'selected_stages_data.csv';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } else {
+            throw new Error('Failed to download CSV');
+        }
+    })
+    .catch(error => {
+        showLoading(false);
+        console.error('Error downloading stages CSV:', error);
+        showNotification('Failed to download CSV. Please try again.', 'error');
+    });
+}
+
+function compareSelectedStages() {
+    const selectedStages = getSelectedStages();
+    
+    if (selectedStages.length < 2) {
+        showNotification('Please select at least two stages to compare.', 'warning');
+        return;
+    }
+    
+    const comparisonPrefix = document.getElementById('comparison-prefix-input').value.trim();
+    const reportTimestamp = document.getElementById('report-select').value;
+    
+    showLoading(true);
+    
+    fetch('/compare_stages', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            timestamp: reportTimestamp,
+            stages: selectedStages.map(stage => stage.stageNumber),
+            comparison_prefix: comparisonPrefix
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        showLoading(false);
+        
+        if (data.success) {
+            // Show comparison plot container
+            const comparisonContainer = document.getElementById('comparison-plot-container');
+            comparisonContainer.style.display = 'block';
+            
+            // Load the comparison plot
+            loadPlotlyJSON(data.comparison_plot_path, document.getElementById('comparison-plot-div'));
+        } else {
+            showNotification('Error generating comparison: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showLoading(false);
+        console.error('Error comparing stages:', error);
+        showNotification('Failed to generate comparison. Please try again.', 'error');
+    });
+}
+
+function getSelectedStages() {
+    const selectedButtons = document.querySelectorAll('.stage-button.selected');
+    const selectedStages = [];
+    
+    selectedButtons.forEach(button => {
+        selectedStages.push({
+            stageNumber: parseInt(button.getAttribute('data-stage')),
+            plotPath: button.getAttribute('data-plot-path'),
+            jsonPath: button.getAttribute('data-json-path')
+        });
+    });
+    
+    return selectedStages;
+}
+
+function loadAvailableComparisonPlots() {
+    const container = document.getElementById('all-comparison-plots-container');
+    container.innerHTML = '<p class="loading-text">Loading available plots...</p>';
+    
+    fetch('/list_all_comparison_plots')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                renderAvailableComparisonPlots(data.comparison_plots);
+            } else {
+                container.innerHTML = '<p class="error-text">Error loading comparison plots</p>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading comparison plots:', error);
+            container.innerHTML = '<p class="error-text">Failed to load comparison plots</p>';
+        });
+}
+
+function renderAvailableComparisonPlots(plots) {
+    const container = document.getElementById('all-comparison-plots-container');
+    
+    if (!plots || plots.length === 0) {
+        container.innerHTML = '<p class="empty-list">No comparison plots available</p>';
+        return;
+    }
+    
+    container.innerHTML = '';
+    
+    plots.forEach(plot => {
+        const plotItem = document.createElement('div');
+        plotItem.className = 'plot-checkbox-item';
+        
+        plotItem.innerHTML = `
+            <input type="checkbox" id="plot-${plot.name}" class="plot-checkbox" data-path="${plot.path}">
+            <label for="plot-${plot.name}">${plot.display_name}</label>
+        `;
+        
+        container.appendChild(plotItem);
+    });
+}
+
+function addSelectedPlotsToComparison() {
+    const selectedCheckboxes = document.querySelectorAll('.plot-checkbox:checked');
+    
+    if (selectedCheckboxes.length === 0) {
+        showNotification('Please select at least one comparison plot.', 'warning');
+        return;
+    }
+    
+    const selectedList = document.getElementById('selected-cross-json-list');
+    
+    selectedCheckboxes.forEach(checkbox => {
+        const plotPath = checkbox.getAttribute('data-path');
+        const plotName = checkbox.nextElementSibling.textContent;
+        
+        // Check if already added
+        const existingItems = selectedList.querySelectorAll(`[data-path="${plotPath}"]`);
+        if (existingItems.length === 0) {
+            const listItem = document.createElement('li');
+            listItem.className = 'selected-plot-item';
+            listItem.setAttribute('data-path', plotPath);
+            
+            listItem.innerHTML = `
+                <span class="plot-name">${plotName}</span>
+                <button class="remove-plot-btn" title="Remove from selection">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            listItem.querySelector('.remove-plot-btn').addEventListener('click', function() {
+                listItem.remove();
+            });
+            
+            selectedList.appendChild(listItem);
+        }
+        
+        // Uncheck the checkbox
+        checkbox.checked = false;
+    });
+}
+
+function generateCrossComparison() {
+    const selectedPlots = document.querySelectorAll('.selected-plot-item');
+    
+    if (selectedPlots.length === 0) {
+        showNotification('Please add at least one plot for cross-comparison.', 'warning');
+        return;
+    }
+    
+    const selectedPaths = Array.from(selectedPlots).map(item => item.getAttribute('data-path'));
+    const currentReport = document.getElementById('report-select').value;
+    const currentSelectedStages = getSelectedStages().map(stage => stage.stageNumber);
+    
+    showLoading(true);
+    
+    fetch('/generate_cross_comparison', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            selected_comparison_json_paths: selectedPaths,
+            current_report_timestamp: currentReport,
+            current_report_selected_stages: currentSelectedStages
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        showLoading(false);
+        
+        if (data.success) {
+            // Show cross-comparison plot
+            const plotContainer = document.getElementById('cross-comparison-plot-container');
+            plotContainer.style.display = 'block';
+            
+            // Load the plot
+            loadPlotlyJSON(data.cross_comparison_plot_path, plotContainer);
+            
+            // Show download button
+            document.getElementById('download-cross-comparison-csv-button').style.display = 'inline-block';
+        } else {
+            showNotification('Error generating cross-comparison: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showLoading(false);
+        console.error('Error generating cross-comparison:', error);
+        showNotification('Failed to generate cross-comparison. Please try again.', 'error');
+    });
+}
+
+function downloadCrossComparisonCSV() {
+    // This would normally extract data from the plotly plot and send it to the server
+    // For now, just show a notification
+    showNotification('Download functionality not implemented yet.', 'info');
+}
+
+function showLoading(show) {
+    const loadingIndicator = document.getElementById('loading-indicator');
+    if (show) {
+        loadingIndicator.style.display = 'flex';
+    } else {
+        loadingIndicator.style.display = 'none';
+    }
+}
+
+function showNotification(message, type = 'info') {
+    const notification = document.getElementById('notification');
+    notification.textContent = message;
+    notification.className = `notification ${type}`;
+    notification.style.display = 'block';
+    
+    setTimeout(() => {
+        notification.style.display = 'none';
+    }, 5000);
+}
+</script>
+{% endblock %} 

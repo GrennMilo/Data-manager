@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Skid NH3 Syn. Data Processor{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src='https://cdn.plot.ly/plotly-3.0.1.min.js'></script>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <header class="main-header">
+        <div class="header-container">
+            <div class="logo-container">
+                <h1>Skid NH3 Syn. Data Processor</h1>
+            </div>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="/" title="Home"><i class="fas fa-home"></i> Home</a></li>
+                    <li><a href="/reports" title="Reports"><i class="fas fa-chart-line"></i> Reports</a></li>
+                    <li><a href="/upload" title="Upload"><i class="fas fa-upload"></i> Upload</a></li>
+                    <li><a href="/visualize" title="Visualize"><i class="fas fa-eye"></i> Visualize</a></li>
+                </ul>
+            </nav>
+            <button id="theme-switcher" class="theme-button" title="Toggle dark/light theme"><i class="fas fa-moon"></i></button>
+        </div>
+    </header>
+
+    <main class="content-container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <div class="footer-container">
+            <p>&copy; 2025 Skid NH3 Syn. Data Processor</p>
+        </div>
+    </footer>
+
+    <!-- Common Loading Indicator -->
+    <div id="loading-indicator" style="display: none;">
+        <div class="spinner"></div>
+        <p>Processing... Please wait.</p>
+    </div>
+
+    <!-- Common error/success notification -->
+    <div id="notification" class="notification" style="display: none;"></div>
+
+    <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html> 
